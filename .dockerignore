@@ -1,0 +1,7 @@
+README.md
+makefile
+.git/
+.gitea/
+bin/
+sample.*
+db/

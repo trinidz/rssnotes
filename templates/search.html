@@ -1,0 +1,146 @@
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css" integrity="sha384-DyZ88mC6Up2uqS4h/KRgHuoeGwBcD4Ng9SiP4dIRy0EXTlnuz47vAwmeGwVChigm" crossorigin="anonymous"/>
+    <title>{{.RelayName}}</title>
+</head>
+
+<body>
+<nav class="navbar is-light" role="navigation" aria-label="main navigation">
+    <div class="navbar-brand">
+        <a href="/" class="navbar-item">
+            <img src="/static/rsslay-logo.png" alt="{{.RelayName}}: turn RSS or Atom feeds into Nostr profiles" width="112" height="28">
+        </a>
+        <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navMenu">
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+        </a>
+    </div>
+    <div id="navMenu" class="navbar-menu">
+        <div class="navbar-start">
+            <a href="/" class="navbar-item">
+                Home
+            </a>
+        </div>
+    </div>
+</nav>
+<div class="hero is-dark">
+    <div class="hero-body">
+        <p class="title"><a href="/">{{.RelayName}}</a></p>
+        <p class="subtitle">convert RSS or Atom feeds into <a
+                href="https://github.com/nostr-protocol/nostr">Nostr</a> profiles.</p>
+    </div>
+</div>
+<div class="container is-fluid mt-4">
+    {{if .Error}}
+    <div class="notification is-danger">
+        {{.ErrorMessage}}
+    </div>
+
+    <div class="content">
+        <form action="/search" method="GET" class="control">
+            <p>Search feeds by URL (min. 5 characters):</p>
+            <div class="field has-addons">
+                <div class="control is-expanded">
+                    <input class="input is-link is-normal" name="query" type="text" placeholder="bitcoin">
+                </div>
+                <div class="control">
+                    <button class="button is-info">
+                        <span class="icon">
+                          <i class="fas fa-filter"></i>
+                        </span>
+                        <span>Search</span>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {{else}}
+    <nav class="level">
+        <div class="level-item has-text-centered">
+            <div>
+                <p class="heading">Current feeds count</p>
+                <p class="title">{{.Count}}</p>
+            </div>
+        </div>
+        <div class="level-item has-text-centered">
+            <div>
+                <p class="heading">Matched feeds count</p>
+                <p class="title">{{.FilteredCount}}</p>
+            </div>
+        </div>
+    </nav>
+    <div class="content">
+        <form action="/search" method="GET" class="control">
+            <p>Search feeds by URL (min. 5 characters):</p>
+            <div class="field has-addons">
+                <div class="control is-expanded">
+                    <input class="input is-link is-normal" name="query" type="text" placeholder="bitcoin">
+                </div>
+                <div class="control">
+                    <button class="button is-info">
+                        <span class="icon">
+                          <i class="fas fa-filter"></i>
+                        </span>
+                        <span>Search</span>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+    <h2 class="subtitle">Found feeds (showing a maximum of 50, refine your query if necessary)</h2>
+    <table class="table">
+        <tbody>
+        <tr>
+            <th>Public key (Hex)</th>
+            <th>Public key</th>
+            <th>Feed URL</th>
+            <th>Subscribe</th>
+            <th>View in clients</th>
+        </tr>
+        {{range .Entries}}
+        <tr>
+            <td><a href="https://www.nostr.guru/p/{{.PubKey}}" style="word-break: break-all;">{{.PubKey}}</a>
+            </td>
+            <td><a href="nostr:{{.NPubKey}}" style="word-break: break-all;">{{.NPubKey}}</a>
+            </td>
+            <td><a href="{{.Url}}" style="word-break: break-all;">{{.Url}}</a>
+            </td>
+            <td><img src="/static/qrcodes/{{.NPubKey}}.png" alt="npub qrcode" width="128" height="128">
+            </td>
+            <td>
+                <div class="buttons">
+                    <a href="https://njump.me/{{.NPubKey}}" target="_blank" class="button is-small is-link is-light">View in njump</a>
+                </div>
+            </td>
+        </tr>
+        {{end}}
+        </tbody>
+    </table>
+    {{end}}
+    <a class="button is-primary mt-3 mb-3" href="/">
+        <span class="icon">
+            <i class="fas fa-home"></i>
+        </span>
+        <span>Go home</span>
+    </a>
+    </p>
+</div>
+<footer class="footer">
+    <div class="content has-text-centered">
+        <p>
+            <a href="https://github.com/trinidz/rssnotes"><strong>rssnotes</strong></a> original work by <a href="https://fiatjaf.com">fiatjaf</a> and <a href="https://piraces.dev">piraces</a> modifications by <a
+                href="https://njump.me/npub15ucds95a8m2whgj4esll39lhxta5jwk8lqvmtz6ne8lf8ksmggrqz74dq7">trinidz</a>. The source code is
+            <a href="https://github.com/trinidz/rssnotes/blob/main/LICENSE">UNlicensed</a>. Keep the good vibes 🤙
+        </p>
+    </div>
+</footer>
+<script src="/assets/js/nostr.js"></script>
+</body>
+</html>
