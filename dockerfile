@@ -22,7 +22,7 @@ FROM debian:bookworm-slim
 ENV PORT=3334
 
 # Copy Go binary
-COPY --from=gobuilder app/wot-rsslay /app/
+COPY --from=gobuilder app/rssnotes /app/
 
 # Copy any necessary files like templates, static assets, etc.
 COPY --from=gobuilder /app/templates /app/templates
