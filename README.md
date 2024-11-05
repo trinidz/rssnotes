@@ -50,7 +50,7 @@ MemoryLimit=2G
 [Install]
 WantedBy=multi-user.target
 ```
-8. Replace /path/to/ with the actual paths where you cloned the repository and stored the files.
+8. Replace /home/myuser/ with the actual paths where you cloned the repository and stored the files.
 
 9. Reload systemd to recognize the new service:
 
