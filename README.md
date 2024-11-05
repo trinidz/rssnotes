@@ -18,7 +18,7 @@ rssnotes is nostr relay that functions as an rss to nostr bridge by creating nos
 ## Run the relay as a service
 1. Create a new folder called rssnotes.
 2. Copy the rssnotes binary to the folder.
-3. Copy the files sample.frens.json, sample.seedrelays.json sample.env, and the templates folder to your folder. Change the names of the files to .env, frens.json and seedrelays.json.  Also copy the templates folder into your rssnotes folder.
+3. Copy the files sample.frens.json, sample.seedrelays.json sample.env, and the templates folder to your folder. Change the names of the files to .env, frens.json and seedrelays.json. 
 4. Open the .env file and add values for the following REQUIRED environment variables. 
 - **RELAY_PRIVKEY** --- Use a nostr key generator to create a new set of nostr private and public keys for the relay. DO NOT USE your own existing nostr keys.  The relay will use these keys to follow all of your rss feeds and other background tasks. 
 - **RELAY_PUBKEY** --- aquired from the new keys you created above.
@@ -70,8 +70,3 @@ sudo systemctl start rssnotes
 sudo systemctl enable rssnotes
 ```
 
-12. Permission Issues on Some Systems. The relay may not have permissions to read and write to the database. To fix this, you can change the permissions of the database folder:
-
-```console
-sudo chmod -R 777 /path/to/db
-```
