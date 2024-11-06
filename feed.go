@@ -45,8 +45,11 @@ var rss_types = []string{
 
 func getFeedUrl(url string) string {
 	resp, err := client.Get(url)
-	if err != nil || resp.StatusCode >= 300 {
-		log.Printf("[ERROR] %s or status code %d", err, resp.StatusCode)
+	if err != nil {
+		log.Printf("[ERROR] %s", err)
+		return ""
+	} else if resp.StatusCode >= 300 {
+		log.Printf("[ERROR] status code: %d", resp.StatusCode)
 		return ""
 	}
 

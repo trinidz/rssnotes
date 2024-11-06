@@ -35,7 +35,7 @@ type Settings struct {
 
 	LogLevel       string `envconfig:"LOG_LEVEL" default:"WARN"`
 	Port           string `envconfig:"PORT" default:"3334"`
-	DatabasePath   string `envconfig:"DATABASE_PATH" default:"./db/rsslay"`
+	DatabasePath   string `envconfig:"DATABASE_PATH" default:"./db/rssnotes"`
 	FrensdataPath  string `envconfig:"FRENSDATA_PATH" default:"./frens.json"`
 	SeedRelaysPath string `envconfig:"SEED_RELAYS_PATH" default:"./seedrelays.json"`
 	LogfilePath    string `envconfig:"LOGFILE_PATH" default:"./logfile.log"`

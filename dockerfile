@@ -25,7 +25,7 @@ ENV PORT=3334
 COPY --from=gobuilder app/rssnotes /app/
 
 # Copy any necessary files like templates, static assets, etc.
-COPY --from=gobuilder /app/templates /app/templates
+COPY --from=gobuilder /app/templates /app/
 
 # Run the application
 CMD ["/app/rssnotes"]
