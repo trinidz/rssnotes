@@ -20,10 +20,10 @@ rssnotes is nostr relay that functions as an rss to nostr bridge by creating nos
 2. Copy the rssnotes binary to the folder.
 3. Copy the files sample.frens.json, sample.seedrelays.json sample.env, and the templates folder to your folder. Change the names of the files to .env, frens.json and seedrelays.json. 
 4. Open the .env file and add values for the following REQUIRED environment variables. 
-- **RELAY_PRIVKEY** --- Use a nostr key generator to create a new set of nostr private and public keys for the relay. DO NOT USE your own existing nostr keys.  The relay will use these keys to follow all of your rss feeds and other background tasks. 
-- **RELAY_PUBKEY** --- aquired from the new keys you created above.
-- **RELAY_URL**  --- the URL of your relay ex.: myrssrelay.com.  This is only used to display on the relay's main page.  It does not affect your relays real URL.
-- **RANDOM_SECRET** --- This is used to generate the nostr public/private keys for your relays rss feeds.  This should be a randomly generated string at least 20 characters long.
+- **RELAY_PRIVKEY** --- Use a nostr key generator to create a new set of nostr private and public keys for the relay. DO NOT USE your own existing nostr keys.  The relay will use these keys to follow all of your rss feeds and for other background tasks. 
+- **RELAY_PUBKEY** --- acquired from the new private key created above.
+- **RELAY_URL**  --- the URL of your relay ex.: myrssrelay.com.  This is only used for display on the relay's main page.  It does not affect your relays actual URL.
+- **RANDOM_SECRET** --- This is used to generate the nostr public/private keys for the rss feeds.  This should be a randomly generated string at least 20 characters long.
 5. The remaining variables in the sample.env file are optional.
 
 6. Create a systemd service file:
