@@ -14,7 +14,7 @@
 <nav class="navbar is-light" role="navigation" aria-label="main navigation">
     <div class="navbar-brand">
         <a href="/" class="navbar-item">
-            <img src="/static/rsslay-logo.png" alt="{{.RelayName}}: comvert RSS or Atom feeds into Nostr profiles" width="112" height="28">
+            <img src="/static/rssnotes-logo.png" alt="{{.RelayName}}: comvert RSS or Atom feeds into Nostr profiles" width="112" height="28">
         </a>
         <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navMenu">
             <span aria-hidden="true"></span>
@@ -62,28 +62,17 @@
             </div>
         </div>
     </nav>
-    <h2 class="subtitle">To get started use one or both of the following methods:</h2>
+    <h2 class="subtitle">Getting Started:</h2>
     <div class="content">
-        <h3 class="subtitle is-6">Follow rss feeds using your existing nostr profile.</h3>
         <ol>
-            <li>Get the URL of the RSS or Atom feed and paste it below in the <strong>Get Public Key</strong> box. 
-                <br>Or import RSS feeds from an opml file using the <strong>Import</strong> link at the top of the page.</li>
-            <li>Click the button to get its corresponding nostr public key.</li>
+            <li>Add the URL of an RSS or Atom feed below in the <strong>Get Public Key</strong> box and click the button to get its corresponding nostr public key. 
+            <li>If you have an opml file, import RSS feeds using the <strong>Import</strong> link at the top of the page.</li>
             <li>Add your rssnotes relay to your Nostr client: <strong><code>wss://{{.RelayURL}}</code></strong></li>
-            <li>Follow the feed's public key from your Nostr client.</li>
+            <li><strong>To follow an rss feed using your existing nostr profile. </strong>Follow the feed's public key from your Nostr client.</li>
+            <li><strong>To follow all rss feeds using the relay's public key. </strong>Login to nostr using the relay's public key from your Nostr client.</li>
         </ol>
     </div>
    
-    <div class="content">
-        <h3 class="subtitle is-6">Follow rss feeds using the relay's public key.</h3>
-        <ol>
-            <li>Get the URL of the RSS or Atom feed and paste it below in the <strong>Get Public Key</strong> box. 
-                <br>Or import RSS feeds from an opml file using the <strong>Import</strong> link at the top of the page.</li>
-            <li>Add your rssnotes relay to your Nostr client: <strong><code>wss://{{.RelayURL}}</code></strong></li>
-            <li>Login to nostr using relay's public key from your Nostr client.</li>
-        </ol>
-    </div>
-
     <h2 class="subtitle has-text-centered">RSS is powerful! 🍰 Everything is RSSible</h2>
     <div class="content">
         

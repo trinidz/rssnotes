@@ -57,6 +57,11 @@ func handleCreateFeed(w http.ResponseWriter, r *http.Request, secret *string) {
 	//metrics.CreateRequests.Inc()
 	entry := createFeed(r, secret)
 
+	followAction := FollowManagment{
+		Action: Sync,
+	}
+	followManagmentCh <- followAction
+
 	data := struct {
 		RelayName    string
 		PubKey       string
@@ -74,11 +79,6 @@ func handleCreateFeed(w http.ResponseWriter, r *http.Request, secret *string) {
 		Error:        entry.Error,
 		ErrorMessage: entry.ErrorMessage,
 	}
-
-	followAction := FollowManagment{
-		Action: Sync,
-	}
-	followManagmentCh <- followAction
 
 	err := tmpl.Execute(w, data)
 	if err != nil {
@@ -170,14 +170,14 @@ func createFeed(r *http.Request, secret *string) *Entry {
 func handleDeleteFeed(w http.ResponseWriter, r *http.Request) {
 	feedPubkey := r.URL.Query().Get("pubkey")
 
+	followAction := FollowManagment{
+		Action:       Delete,
+		FollowEntity: Entity{PublicKey: feedPubkey},
+	}
+	followManagmentCh <- followAction
+
 	if err := deleteEntityInBookmarkEvent(feedPubkey); err != nil {
 		log.Printf("[ERROR] could not delete feed '%q'...Error: %s ", feedPubkey, err)
-	} else {
-		followAction := FollowManagment{
-			Action:       Delete,
-			FollowEntity: Entity{PublicKey: feedPubkey},
-		}
-		followManagmentCh <- followAction
 	}
 
 	items, err := getSavedEntries()
@@ -280,10 +280,7 @@ func handleImportOpml(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//start := time.Now()
 	feedEntries := importFeeds(doc.Body.Outlines, &s.RandomSecret)
-	//duration := time.Since(start)
-	//log.Printf("[DEBUG] ******** import time: %v *********", duration.Seconds())
 	numBadFeeds := 0
 
 	for _, feed := range feedEntries {

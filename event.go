@@ -158,6 +158,23 @@ func getUniqueFollows(followListA nostr.Tags, followListB nostr.Tags) nostr.Tags
 	return uniqueFollows
 }
 
+// delete a follow from local kind 3 event
+func deleteLocalFollow(pubkeyHex string) nostr.Tags {
+	localFollows := getLocalFollows()
+
+	for i, localFollow := range localFollows {
+		if localFollow.Value() == pubkeyHex {
+			copy(localFollows[i:], localFollows[i+1:])
+			localFollows[len(localFollows)-1] = nostr.Tag{}
+			localFollows = localFollows[:len(localFollows)-1]
+
+			return localFollows
+		}
+	}
+
+	return nil
+}
+
 func deleteRemoteFollow(pubkeyHex string) nostr.Tags {
 	remoteFollows := getRemoteFollows(s.RelayPubkey)
 
@@ -583,21 +600,34 @@ func updateFollowListEvent(followAction FollowManagment) {
 		localFollows := getLocalFollows()
 		currentOneHopNetwork = append(currentOneHopNetwork, localFollows...)
 	case Delete:
-		reducedFollows := deleteRemoteFollow(followAction.FollowEntity.PublicKey)
-		currentOneHopNetwork = append(currentOneHopNetwork, reducedFollows...)
+		//reducedFollows := deleteRemoteFollow(followAction.FollowEntity.PublicKey)
+		reducedFollows := deleteLocalFollow(followAction.FollowEntity.PublicKey)
+		if reducedFollows != nil {
+			currentOneHopNetwork = append(currentOneHopNetwork, reducedFollows...)
+		} else {
+			return
+		}
 	}
 
-	// evtNewSubs := nostr.Event{
-	// 	PubKey:    s.RelayPubkey,
-	// 	CreatedAt: nostr.Now(),
-	// 	Kind:      nostr.KindFollowList,
-	// 	Tags:      currentOneHopNetwork,
-	// }
+	evtNewSubs := nostr.Event{
+		PubKey:    s.RelayPubkey,
+		CreatedAt: nostr.Now(),
+		Kind:      nostr.KindFollowList,
+		Tags:      currentOneHopNetwork,
+	}
 
-	// if err := evtNewSubs.Sign(s.RelayPrivkey); err != nil {
-	// 	log.Printf("[ERROR] %s", err)
-	// 	return
-	// }
+	if err := evtNewSubs.Sign(s.RelayPrivkey); err != nil {
+		log.Printf("[ERROR] %s", err)
+		return
+	}
+
+	relay.BroadcastEvent(&evtNewSubs)
+
+	for _, store := range relay.StoreEvent {
+		if err := store(context.TODO(), &evtNewSubs); err != nil {
+			log.Printf("[ERROR] %s", err)
+		}
+	}
 
 	// blastEvent(&evtNewSubs)
 

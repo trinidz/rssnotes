@@ -105,7 +105,7 @@ func main() {
 		return
 	}
 
-	// basic properties (will be returned on the NIP-11 endpoint)
+	// basic properties returned on the NIP-11 endpoint
 	relay.Info.Name = s.RelayName
 	relay.Info.PubKey = s.RelayPubkey
 	relay.Info.Description = s.RelayDescription
@@ -125,18 +125,13 @@ func main() {
 	relay.CountEvents = append(relay.CountEvents, db.CountEvents)
 	relay.DeleteEvent = append(relay.DeleteEvent, db.DeleteEvent)
 
-	// there are many other configurable things you can set
 	relay.RejectEvent = append(relay.RejectEvent,
-		// built-in policies
 		policies.ValidateKind,
-		// whitelist
 		policyEventWhitelist,
 	)
 
 	relay.RejectFilter = append(relay.RejectFilter,
-		// built-in policies
 		policies.NoComplexFilters,
-		// define your own policies
 		policyFilterBookmark,
 	)
 
@@ -145,11 +140,10 @@ func main() {
 		log.Printf("[ERROR] %s", err)
 	}
 
-	//create relay metadata notes
 	if err := createMetadataNote(s.RelayPubkey, s.RelayPrivkey, &gofeed.Feed{Title: s.RelayName, Description: s.RelayDescription}, s.DefaultProfilePicUrl); err != nil {
 		log.Print("[ERROR] ", err)
 	}
-	//create qr code for relay npub if file does NOT already exists
+
 	if _, err := os.Stat(fmt.Sprintf("%s/%s.png", s.QRCodePath, npub)); errors.Is(err, os.ErrNotExist) {
 		if err := qrcode.WriteFile(fmt.Sprintf("nostr:%s", npub), qrcode.Low, 128, fmt.Sprintf("%s/%s.png", s.QRCodePath, npub)); err != nil {
 			log.Print("[ERROR] creating relay QR code", err)
