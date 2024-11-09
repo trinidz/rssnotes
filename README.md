@@ -70,3 +70,4 @@ sudo systemctl start rssnotes
 sudo systemctl enable rssnotes
 ```
 
+12. Go to http://localhost:3334 in your browser.
