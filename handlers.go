@@ -144,17 +144,15 @@ func createFeed(r *http.Request, secret *string) *Entry {
 		return &entry
 	}
 
-	go func() {
-		if err := createMetadataNote(publicKey, sk, parsedFeed, s.DefaultProfilePicUrl); err != nil {
-			log.Printf("[ERROR] creating metadata note %s", err)
-		}
+	if err := createMetadataNote(publicKey, sk, parsedFeed, s.DefaultProfilePicUrl); err != nil {
+		log.Printf("[ERROR] creating metadata note %s", err)
+	}
 
-		latestCreatedAt := initFeed(publicKey, sk, feedUrl, parsedFeed)
+	latestCreatedAt := initFeed(publicKey, sk, feedUrl, parsedFeed)
 
-		if err := addEntityToBookmarkEvent([]Entity{{publicKey, sk, feedUrl, latestCreatedAt}}); err != nil {
-			log.Printf("[ERROR] feed entity %s not added to bookmark", feedUrl)
-		}
-	}()
+	if err := addEntityToBookmarkEvent([]Entity{{publicKey, sk, feedUrl, latestCreatedAt}}); err != nil {
+		log.Printf("[ERROR] feed entity %s not added to bookmark", feedUrl)
+	}
 
 	entry.Url = feedUrl
 	entry.PubKey = publicKey
@@ -396,13 +394,15 @@ func importFeeds(opmlUrls []opml.Outline, secret *string) []*Entry {
 		}
 		feedEntries = append(feedEntries, &feedEntr)
 
-		if err := qrcode.WriteFile(fmt.Sprintf("nostr:%s", feedEntr.NPubKey), qrcode.Low, 128, fmt.Sprintf("%s/%s.png", s.QRCodePath, feedEntr.NPubKey)); err != nil {
-			log.Print("[ERROR] ", err)
-		}
+		go func() {
+			if err := qrcode.WriteFile(fmt.Sprintf("nostr:%s", feedEntr.NPubKey), qrcode.Low, 128, fmt.Sprintf("%s/%s.png", s.QRCodePath, feedEntr.NPubKey)); err != nil {
+				log.Print("[ERROR] ", err)
+			}
 
-		if err := createMetadataNote(publicKey, sk, parsedFeed, s.DefaultProfilePicUrl); err != nil {
-			log.Printf("[ERROR] creating metadata note %s", err)
-		}
+			if err := createMetadataNote(publicKey, sk, parsedFeed, s.DefaultProfilePicUrl); err != nil {
+				log.Printf("[ERROR] creating metadata note %s", err)
+			}
+		}()
 
 		latestCreatedAt := initFeed(publicKey, sk, feedUrl, parsedFeed)
 		feedEntities = append(feedEntities, Entity{PublicKey: publicKey, PrivateKey: sk, URL: feedUrl, LastUpdate: latestCreatedAt})
@@ -411,6 +411,11 @@ func importFeeds(opmlUrls []opml.Outline, secret *string) []*Entry {
 	if err := addEntityToBookmarkEvent(feedEntities); err != nil {
 		log.Printf("[ERROR] adding feed entities: %s", err)
 	}
+
+	followAction := FollowManagment{
+		Action: Sync,
+	}
+	followManagmentCh <- followAction
 
 	return feedEntries
 }
