@@ -39,7 +39,8 @@ cp sample.seedrelays.json seedrelays.json
 - **RELAY_PUBKEY** --- acquired from the new private key created above.
 - **RELAY_URL**  --- the URL of your relay ex.: myrssrelay.com.  This is only used for display on the relay's main page.  It does not affect your relays actual URL.
 - **RANDOM_SECRET** --- This is used to generate the nostr public/private keys for the rss feeds.  This should be a randomly generated string at least 20 characters long.
-5. The remaining variables in the sample.env file are optional.
+
+5. The remaining variables in the .env file are optional.
 
 6. Create a systemd service file:
 
