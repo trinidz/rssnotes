@@ -1,13 +1,13 @@
 # RSSNOTES
 
-rssnotes is nostr relay that functions as an rss to nostr bridge by creating nostr profiles and notes for RSS feeds. rssnotes is a read only relay.  rssnotes is a fork of [rsslay](https://github.com/piraces/rsslay).
+rssnotes is a nostr relay that functions as an rss to nostr bridge by creating nostr profiles and notes for RSS feeds. rssnotes is a read only relay.  rssnotes is a fork of [rsslay](https://github.com/piraces/rsslay).
 
 ## Features
-- Parsing of RSS feeds to Nostr profiles.
+- Convert RSS feeds into Nostr profiles.
 - Creates a pubkey, npubkey and QR code for each RSS feed profile that you can use to follow the RSS feed on nostr.
 - The rssnotes relay also has its own pubkey.  The rssnotes relay pubkey automatically follows all of the rss feed profiles. So if you login to nostr as the rssnotes relay you will see all of your RSS feeds.
 - Option to import and export multiple RSS feeds at once using an opml file.
-- Option to automatically remove old kind-1 notes.
+- Option to automatically remove old notes.
 - Search bar
 - Relay logs exposed on the /log path.
 
@@ -15,10 +15,25 @@ rssnotes is nostr relay that functions as an rss to nostr bridge by creating nos
 
 ![alt text](screenshots/rssnotes-github.png)
 
-## Run the relay as a service
-1. Create a new folder called rssnotes.
-2. Copy the rssnotes binary to the folder.
-3. Copy the files sample.frens.json, sample.seedrelays.json sample.env, and the templates folder to your folder. Change the names of the files to .env, frens.json and seedrelays.json. 
+## Run the relay as a service on your system
+1. Clone the repo and cd into the repo folder.
+```console
+git clone https://github.com/trinidz/rssnotes
+cd rssnotes
+```
+2. Download the correct [rssnotes released binary](https://github.com/trinidz/rssnotes/releases) for your system into the rssnotes folder.
+
+3. Copy and rename the binary and the necessary files:
+```console
+# The binary format is simillar to rssnotes-rx.x.x-ostype-arch. Change the cp command to match the specific binary you downloaded.
+cp rssnotes-rx.x.x-ostype-arch rssnotes
+```
+```console
+cp sample.env .env
+```
+```console
+cp sample.seedrelays.json seedrelays.json
+```
 4. Open the .env file and add values for the following REQUIRED environment variables. 
 - **RELAY_PRIVKEY** --- Use a nostr key generator to create a new set of nostr private and public keys for the relay. DO NOT USE your own existing nostr keys.  The relay will use these keys to follow all of your rss feeds and for other background tasks. 
 - **RELAY_PUBKEY** --- acquired from the new private key created above.
@@ -50,7 +65,7 @@ MemoryLimit=2G
 [Install]
 WantedBy=multi-user.target
 ```
-8. Replace /home/myuser/ with the actual paths where you stored the files.
+8. Replace /home/myuser/ with the actual paths where the files are stored.
 
 9. Reload systemd to recognize the new service:
 

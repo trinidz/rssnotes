@@ -56,7 +56,6 @@ var (
 	s Settings
 	//db = lmdb.LMDBBackend{}
 	db                   = badger.BadgerBackend{}
-	whitelist            = make(Whitelist)
 	relay                = khatru.NewRelay()
 	followManagmentCh    = make(chan FollowManagment)
 	pool                 *nostr.SimplePool
@@ -97,11 +96,6 @@ func main() {
 	seedRelays = getRelayListFromFile(s.SeedRelaysPath)
 	if len(seedRelays) == 0 {
 		log.Panic("[FATAL] 0 seed relays; need to set relays")
-		return
-	}
-
-	if err := loadWhitelist(); err != nil {
-		log.Printf("[ERROR] failed to load whitelist %s", err)
 		return
 	}
 
