@@ -17,21 +17,21 @@ rssnotes is a nostr relay that functions as an rss to nostr bridge by creating n
 
 ## Run the relay as a service on your system
 1. Clone the repo and cd into the repo folder.
-```console
+```bash
 git clone https://github.com/trinidz/rssnotes
 cd rssnotes
 ```
 2. Download the correct [rssnotes released binary](https://github.com/trinidz/rssnotes/releases) for your system into the rssnotes folder.
 
 3. Copy and rename the binary and the necessary files:
-```console
+```bash
 # The binary format is simillar to rssnotes-rx.x.x-ostype-arch. Change the cp command to match the specific binary you downloaded.
 cp rssnotes-rx.x.x-ostype-arch rssnotes
 ```
-```console
+```bash
 cp sample.env .env
 ```
-```console
+```bash
 cp sample.seedrelays.json seedrelays.json
 ```
 4. Open the .env file and add values for the following REQUIRED environment variables. 
@@ -43,13 +43,13 @@ cp sample.seedrelays.json seedrelays.json
 
 6. Create a systemd service file:
 
-```console
+```bash
 sudo nano /etc/systemd/system/rssnotes.service
 ```
 
 7.  Add the following contents:
 
-```config
+```ini
 [Unit]
 Description=RSSNotes Relay Service
 After=network.target
@@ -69,19 +69,19 @@ WantedBy=multi-user.target
 
 9. Reload systemd to recognize the new service:
 
-```console
+```bash
 sudo systemctl daemon-reload
 ```
 
 10. Start the service:
 
-```console
+```bash
 sudo systemctl start rssnotes
 ```
 
 11. Enable the service to start on boot:
 
-```console
+```bash
 sudo systemctl enable rssnotes
 ```
 
