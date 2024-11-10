@@ -126,8 +126,7 @@ func main() {
 	relay.DeleteEvent = append(relay.DeleteEvent, db.DeleteEvent)
 
 	relay.RejectEvent = append(relay.RejectEvent,
-		policies.ValidateKind,
-		policyEventWhitelist,
+		policyEventReadOnly,
 	)
 
 	relay.RejectFilter = append(relay.RejectFilter,
