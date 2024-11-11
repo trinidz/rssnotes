@@ -102,13 +102,13 @@
             <th>Public key</th>
             <th>Feed URL</th>
             <th>Subscribe</th>
-            <th>View in clients</th>
+            <th>Manage</th>
         </tr>
         {{range .Entries}}
         <tr>
             <td><a href="https://www.nostr.guru/p/{{.PubKey}}" style="word-break: break-all;">{{.PubKey}}</a>
             </td>
-            <td><a href="nostr:{{.NPubKey}}" style="word-break: break-all;">{{.NPubKey}}</a>
+            <td><a href="https://njump.me/{{.NPubKey}}" style="word-break: break-all;">{{.NPubKey}}</a>
             </td>
             <td><a href="{{.Url}}" style="word-break: break-all;">{{.Url}}</a>
             </td>
@@ -116,7 +116,7 @@
             </td>
             <td>
                 <div class="buttons">
-                    <a href="https://njump.me/{{.NPubKey}}" target="_blank" class="button is-small is-link is-light">View in njump</a>
+                    <a href="/delete?pubkey={{.PubKey}}" target="_self" class="button is-small is-link is-light">Delete</a>
                 </div>
             </td>
         </tr>
