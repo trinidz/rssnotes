@@ -14,7 +14,7 @@ func policyEventReadOnly(ctx context.Context, event *nostr.Event) (reject bool, 
 }
 
 func policyFilterBookmark(_ context.Context, filter nostr.Filter) (reject bool, msg string) {
-	if slices.Contains(filter.Kinds, 10003) {
+	if slices.Contains(filter.Kinds, KIND_BOOKMARKS) {
 		log.Printf("[DEBUG] kind 10003 req not allowed: %d\n", filter.Kinds)
 		return true, "restricted: can not read kind 10003 from this relay"
 	}
