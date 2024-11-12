@@ -5,3 +5,5 @@ makefile
 bin/
 sample.*
 db/
+.env
+static/qrcodes/

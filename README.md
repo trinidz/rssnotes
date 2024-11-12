@@ -26,8 +26,11 @@ Prerequisites:
 mkdir rssnotes
 cd rssnotes
 ```
-2. Create a folder called `db`.
-
+2. Create two folders: `db` and `qrcodes`.
+```bash
+mkdir db
+mkdir qrcodes
+```
 3. Create a file called `logfile.log`.
 
 4. Create a file called `docker-compose.yml`.
@@ -50,9 +53,7 @@ cd rssnotes
 
 11. Copy and paste the contents from the [sample.seedrelays.json](https://github.com/trinidz/rssnotes/blob/main/sample.seedrelays.json) file into your `seedrelays.json` file. Save and exit the file.
 
-12. Run `docker-compose up -d` while in the `rssnotes` directory. This will start the rssnotes container in the background.
-
-12. Go to http://localhost:3334 in your browser.
+12. Run `docker-compose up -d` while in the `rssnotes` directory. This will start the rssnotes container in the background. Go to http://localhost:3334 in your browser.
 
 ## Run the relay as a service on your system
 1. Clone the repo and cd into the repo folder.

@@ -40,8 +40,8 @@ type Settings struct {
 	SeedRelaysPath string `envconfig:"SEED_RELAYS_PATH" default:"./seedrelays.json"`
 	LogfilePath    string `envconfig:"LOGFILE_PATH" default:"./logfile.log"`
 	TemplatePath   string `envconfig:"TEMPLATE_PATH" default:"./templates"`
-	StaticPath     string `envconfig:"STATIC_PATH" default:"./templates/static"`
-	QRCodePath     string `envconfig:"QRCODE_PATH" default:"./templates/static/qrcodes"`
+	StaticPath     string `envconfig:"STATIC_PATH" default:"./static"`
+	QRCodePath     string `envconfig:"QRCODE_PATH" default:"./static/qrcodes"`
 
 	RsslayTagKey            string `envconfig:"RSSLAY_TAG_KEY" default:"rsslay"`
 	DefaultProfilePicUrl    string `envconfig:"DEFAULT_PROFILE_PICTURE_URL" default:"https://i.imgur.com/MaceU96.png"`
