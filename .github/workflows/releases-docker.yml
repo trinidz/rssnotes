@@ -35,7 +35,6 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            trinidz/rssnotes
             ghcr.io/trinidz/rssnotes
 
       - name: Build and push Docker images
