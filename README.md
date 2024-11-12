@@ -44,13 +44,15 @@ cd rssnotes
 - **RANDOM_SECRET** --- This is used to generate the nostr public/private keys for the rss feeds.  This should be a randomly generated string at least 20 characters long.
 - **RELAY_URL**  --- the URL of your relay ex.: myrssrelay.com.  This is only used for display on the relay's main page.  It does not affect your relays actual URL.
 
-9. Save and exit the `.env` file.
+9. The remaining variables in the `.env` file are optional. Save and exit the `.env` file.
 
 10. Create a file called `seedrelays.json`. 
 
 11. Copy and paste the contents from the [sample.seedrelays.json](https://github.com/trinidz/rssnotes/blob/main/sample.seedrelays.json) file into your `seedrelays.json` file. Save and exit the file.
 
 12. Run `docker-compose up -d` while in the `rssnotes` directory. This will start the rssnotes container in the background.
+
+12. Go to http://localhost:3334 in your browser.
 
 ## Run the relay as a service on your system
 1. Clone the repo and cd into the repo folder.
@@ -74,8 +76,8 @@ cp sample.seedrelays.json seedrelays.json
 4. Open the .env file and add values for the following REQUIRED environment variables. 
 - **RELAY_PRIVKEY** --- Use a nostr key generator to create a new set of nostr private and public keys for the relay. DO NOT USE your own existing nostr keys.  The relay will use these keys to follow all of your rss feeds and for other background tasks. 
 - **RELAY_PUBKEY** --- acquired from the new private key created above.
-- **RELAY_URL**  --- the URL of your relay ex.: myrssrelay.com.  This is only used for display on the relay's main page.  It does not affect your relays actual URL.
 - **RANDOM_SECRET** --- This is used to generate the nostr public/private keys for the rss feeds.  This should be a randomly generated string at least 20 characters long.
+- **RELAY_URL**  --- the URL of your relay ex.: myrssrelay.com.  This is only used for display on the relay's main page.  It does not affect your relays actual URL.
 
 5. The remaining variables in the .env file are optional.
 
