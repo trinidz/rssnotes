@@ -15,6 +15,38 @@ rssnotes is a nostr relay that functions as an rss to nostr bridge by creating n
 
 ![alt text](screenshots/rssnotes-github.png)
 
+## Run the relay using docker compose
+Prerequisites:
+- [Docker](https://docs.docker.com/get-docker/)
+- [Docker Compose](https://docs.docker.com/compose/install/) - preinstalled on many systems nowadays
+
+1. Create a new `rssnotes` folder and cd into it.
+```bash
+mkdir rssnotes
+cd rssnotes
+```
+2. Create a file called `docker-compose.yml` inside the rssnotes folder.
+
+3. Copy and paste the contents from the [sample.docker-compose.yml](https://github.com/trinidz/rssnotes/blob/main/sample.docker-compose.yml) file into your `docker-compose.yml` file. Save and exit the file.
+
+4. Create a file called `.env`.  
+
+5. Copy and paste the contents of the [sample.env](https://github.com/trinidz/rssnotes/blob/main/sample.env) file into your `.env` file.
+
+6. Modify the contents of your `.env` file. Add values for the following REQUIRED environment variables. 
+- **RELAY_PRIVKEY** --- Use a nostr key generator to create a new set of nostr private and public keys for the relay. DO NOT USE your own existing nostr keys.  The relay will use these keys to follow all of your rss feeds and for other background tasks. 
+- **RELAY_PUBKEY** --- acquired from the new private key created above.
+- **RANDOM_SECRET** --- This is used to generate the nostr public/private keys for the rss feeds.  This should be a randomly generated string at least 20 characters long.
+- **RELAY_URL**  --- the URL of your relay ex.: myrssrelay.com.  This is only used for display on the relay's main page.  It does not affect your relays actual URL.
+
+7. Save and exit the `.env` file.
+
+8. Create a file called `seedrelays.json`. 
+
+9. Copy and paste the contents from the [sample.seedrelays.json](https://github.com/trinidz/rssnotes/blob/main/sample.seedrelays.json) file into your `seedrelays.json` file. Save and exit the file.
+
+10. Run `docker-compose up -d` while in the `rssnotes` directory. This will start the rssnotes container in the background.
+
 ## Run the relay as a service on your system
 1. Clone the repo and cd into the repo folder.
 ```bash
