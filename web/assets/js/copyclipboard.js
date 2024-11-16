@@ -1,7 +1,5 @@
 async function copyToClipboard(name) {
-    const input = document.getElementById(name);
-    input.select();
-    let text = input.value;
+    const text = document.getElementById(name).value;
     try {
         await navigator.clipboard.writeText(text);
     } catch (err) {

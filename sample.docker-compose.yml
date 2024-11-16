@@ -6,10 +6,9 @@ services:
     volumes:
       - "./.env:/.env"
       - "./db:/app/db"
-      - "./qrcodes:/app/static/qrcodes"
+      - "./qrcodes:/app/web/assests/qrcodes"
       - "./logfile.log:/app/logfile.log"
       - "./seedrelays.json:/app/seedrelays.json:ro"
-     
     ports:
       - "3334:3334"
     restart: unless-stopped

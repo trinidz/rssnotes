@@ -3,8 +3,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
-    <!--<script src="https://cdn.tailwindcss.com"></script>-->
+    <link rel="icon" type="image/x-icon" href="/assets/static/favicon.ico">
+    <script src="/assets/js/htmx.min.js"></script>
+    <link rel="stylesheet" href="/assets/css/styles.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css" integrity="sha384-DyZ88mC6Up2uqS4h/KRgHuoeGwBcD4Ng9SiP4dIRy0EXTlnuz47vAwmeGwVChigm" crossorigin="anonymous"/>
     <title>{{.RelayName}}</title>
@@ -14,7 +15,7 @@
 <nav class="navbar is-light" role="navigation" aria-label="main navigation">
     <div class="navbar-brand">
         <a href="/" class="navbar-item">
-            <img src="/static/rssnotes-logo.png" alt="{{.RelayName}}: comvert RSS or Atom feeds into Nostr profiles" width="112" height="28">
+            <img src="/assets/static/rssnotes-logo.png" alt="{{.RelayName}}: comvert RSS or Atom feeds into Nostr profiles" width="112" height="28">
         </a>
         <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navMenu">
             <span aria-hidden="true"></span>
@@ -25,9 +26,14 @@
     <div id="navMenu" class="navbar-menu">
         <div class="navbar-start">
             <a href="/" class="navbar-item">Home</a>
-            <a href="https://github.com/trinidz/rssnotes/wiki" class="navbar-item">Documentation</a>
+            <a href="https://github.com/trinidz/rssnotes" class="navbar-item">Documentation</a>
             <a href="javascript:document.getElementById('opml-file').click()" class="navbar-item">Import</a>
             <a href="/export" class="navbar-item">Export</a>
+        </div>
+        <div class="navbar-end">
+            
+            <div class="navbar-item" id="status-area" hx-get="/progress" hx-target="this" hx-swap="outerHTML" hx-trigger="change from:#opml-import-form" hx-sync="#opml-file: queue first"></div>
+         
         </div>
     </div>
 </nav>
@@ -46,7 +52,7 @@
     <div class="level-item has-text-centered">
         <div>
           <p class="heading" style="padding-top: 10px;">Relay Pubkey</p>
-          <img src="/static/qrcodes/{{.RelayNPubkey}}.png" alt="npub qrcode" width="128" height="128" style="padding-top: 5px; padding-bottom: 5px;">
+          <img src="/assets/qrcodes/{{.RelayNPubkey}}.png" alt="npub qrcode" width="128" height="128" style="padding-top: 5px; padding-bottom: 5px;">
           <p class="heading">{{.RelayNPubkey}}</p>
         </div>
     </div>
@@ -75,7 +81,6 @@
    
     <h2 class="subtitle has-text-centered">RSS is powerful! 🍰 Everything is RSSible</h2>
     <div class="content">
-        
         <ul>
             <li><b>For sites missing a feed (with support for <a
                     href="https://github.com/RSS-Bridge/rss-bridge/tree/master/bridges">several sites</a>), try using <a
@@ -92,12 +97,13 @@
             </li>
         </ul>
     </div>
+
     <div class="content">
-        <!-- <p>Create profiles using RSS feeds from OPML file:</p> -->
-        <form id="opml-import-form" action="/import" method="POST" class="control" enctype="multipart/form-data">
-            <input type="file" id="opml-file" name="opml-file" accept=".xml,.opml" style="display:none;" onchange="document.getElementById('opml-import-form').submit()">
+        <form id="opml-import-form" hx-encoding="multipart/form-data" hx-post="/import" class="control" hx-trigger="change from:#opml-file" hx-target="#status-area" hx-swap="innerHTML">
+            <input type="file" id="opml-file" name="opml-file" accept=".xml,.opml" style="display:none;" >
         </form>
     </div>
+
     <div class="content">
         <p>Create a nostr profile for a RSS feed:</p>
         <form action="/create" method="GET" class="control">
@@ -135,7 +141,7 @@
             </div>
         </form>
     </div>
-    <h2 class="subtitle">Existing feeds </h2>
+    <h2 class="subtitle">Some of the existing feeds (50 random selected)</h2>
     <table class="table">
         <tbody>
         <tr>
@@ -153,7 +159,7 @@
             </td>
             <td><a href="{{.Url}}" style="word-break: break-all;">{{.Url}}</a>
             </td>
-            <td><img src="/static/qrcodes/{{.NPubKey}}.png" alt="npub qrcode" width="128" height="128">
+            <td><img src="/assets/qrcodes/{{.NPubKey}}.png" alt="npub qrcode" width="128" height="128">
             </td>
             <td>
                 <div class="buttons">
@@ -175,6 +181,5 @@
         </p>
     </div>
 </footer>
-<script src="/js/nostr.js"></script>
 </body>
 </html>

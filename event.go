@@ -239,6 +239,10 @@ func feedExists(pubkeyHex, privKeyHex, feedUrl string) (bool, error) {
 
 // add a feed entity to the bookmark event
 func addEntityToBookmarkEvent(entitiesToAdd []Entity) error {
+	if len(entitiesToAdd) == 0 {
+		return nil
+	}
+
 	var bookMarkTags nostr.Tags
 
 	var bookmarkFilter nostr.Filter = nostr.Filter{

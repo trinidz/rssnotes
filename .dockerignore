@@ -6,4 +6,4 @@ bin/
 sample.*
 db/
 .env
-static/qrcodes/
+web/assets/qrcodes

@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/x-icon" href="/assets/static/favicon.ico">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css" integrity="sha384-DyZ88mC6Up2uqS4h/KRgHuoeGwBcD4Ng9SiP4dIRy0EXTlnuz47vAwmeGwVChigm" crossorigin="anonymous"/>
     <title>rsslay</title>
@@ -13,7 +13,7 @@
 <nav class="navbar is-light" role="navigation" aria-label="main navigation">
     <div class="navbar-brand">
         <a href="/" class="navbar-item">
-            <img src="/static/rssnotes-logo.png" alt="{{.RelayName}}: convert RSS or Atom feeds into Nostr profiles" width="112" height="28">
+            <img src="/assets/static/rssnotes-logo.png" alt="{{.RelayName}}: convert RSS or Atom feeds into Nostr profiles" width="112" height="28">
         </a>
         <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navMenu">
             <span aria-hidden="true"></span>
@@ -58,7 +58,7 @@
                         <input id="pubKey" class="input is-readonly" type="text" value="{{.PubKey}}" readonly>
                     </p>
                     <div class="control">
-                        <button class="button is-info copy" name="pubKey">
+                        <button class="button is-info copy" name="pubKey" onclick="copyToClipboard('pubKey')">
                             <span class="icon">
                                 <i class="fas fa-copy"></i>
                             </span>
@@ -78,7 +78,7 @@
                         <input id="nPubKey" class="input is-readonly" type="text" value="{{.NPubKey}}" readonly>
                     </p>
                     <div class="control">
-                        <button class="button is-info copy" name="nPubKey">
+                        <button class="button is-info copy" name="nPubKey" onclick="copyToClipboard('nPubKey')">
                             <span class="icon">
                                 <i class="fas fa-copy"></i>
                             </span>
@@ -98,7 +98,7 @@
                         <input id="url" class="input is-readonly" type="url" value="{{.Url}}" readonly>
                     </p>
                     <div class="control">
-                        <button class="button is-info copy" name="url">
+                        <button class="button is-info copy" name="url" onclick="copyToClipboard('url')">
                             <span class="icon">
                                 <i class="fas fa-copy"></i>
                             </span>
@@ -108,7 +108,7 @@
             </div>
         </div>
         <div class="buttons is-justify-content-center">
-            <img src="/static/qrcodes/{{.NPubKey}}.png" alt="npub qrcode" width="128" height="128">
+            <img src="/assets/qrcodes/{{.NPubKey}}.png" alt="npub qrcode" width="128" height="128">
         </div>
     </div>
     {{end}}
@@ -128,8 +128,6 @@
         </p>
     </div>
 </footer>
-<script src="/js/copyclipboard.js"></script>
-<script src="/js/nostr.js"></script>
+ <script src="/assets/js/copyclipboard.js"></script>
 </body>
-
 </html>

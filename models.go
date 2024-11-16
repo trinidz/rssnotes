@@ -20,6 +20,11 @@ type FollowManagment struct {
 	FollowEntity Entity
 }
 
+type ImportProgressStruct struct {
+	entryIndex   int
+	totalEntries int
+}
+
 type Entity struct {
 	PublicKey  string
 	PrivateKey string

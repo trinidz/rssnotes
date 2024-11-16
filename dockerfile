@@ -25,16 +25,15 @@ ENV DATABASE_PATH="/app/db/rssnotes"
 ENV LOGFILE_PATH="/app/logfile.log"
 ENV FRENSDATA_PATH="/app/users.json"
 ENV SEED_RELAYS_PATH="/app/seedrelays.json"
-ENV TEMPLATE_PATH="/app/templates"
-ENV STATIC_PATH="/app/static"
-ENV QRCODE_PATH="/app/static/qrcodes"
+ENV TEMPLATE_PATH="/app/web/templates"
+ENV STATIC_PATH="/app/web/assets"
+ENV QRCODE_PATH="/app/web/assets/qrcodes"
 
 # Copy Go binary
 COPY --from=gobuilder /app/rssnotes /app/
 
-# Copy any necessary files like templates, static assets, etc.
-COPY --from=gobuilder /app/templates /app/templates
-COPY --from=gobuilder /app/static /app/static
+# Copy any necessary files like templates, static, assets, web, etc.
+COPY --from=gobuilder /app/web /app/web
 
 # Run the application
 CMD ["/app/rssnotes"]

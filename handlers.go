@@ -18,6 +18,10 @@ import (
 	"log"
 )
 
+var (
+	recentImportedEntries []*Entry
+)
+
 func handleFrontpage(w http.ResponseWriter, _ *http.Request) {
 
 	items, err := getSavedEntries()
@@ -214,9 +218,197 @@ func handleDeleteFeed(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleImportOpml(w http.ResponseWriter, r *http.Request) {
+	outputFileStatus := func(errMsg string) {
+		htmlStr := fmt.Sprintf("<div id='progress' name='progress-bar' class='progress-bar' style='--width: 100' data-label='%s...'></div>", errMsg)
+		tmplProg, _ := template.New("t").Parse(htmlStr)
+		tmplProg.Execute(w, nil)
+	}
+
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		errMsg := fmt.Sprintf("[ERROR] OPML parse form %s", err)
+		log.Print(errMsg)
+		outputFileStatus("[ERROR] OPML parse form")
+		return
+	}
+
+	file, _, err := r.FormFile("opml-file")
+	if err != nil {
+		errMsg := fmt.Sprintf("[ERROR] form OPML file: %s", err)
+		log.Print(errMsg)
+		outputFileStatus("[ERROR] form OPML file")
+		return
+	}
+	defer file.Close()
+
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		errMsg := fmt.Sprintf("[ERROR] reading OPML file: %s", err)
+		log.Print(errMsg)
+		outputFileStatus("[ERROR] reading OPML file")
+		return
+	}
+
+	doc, err := opml.NewOPML(fileBytes)
+	if err != nil {
+		errMsg := fmt.Sprintf("[ERROR] OPML bad file format %s", err)
+		log.Print(errMsg)
+		outputFileStatus("[ERROR] OPML bad file format")
+		return
+	}
+
+	go func() {
+		recentImportedEntries = importFeeds(doc.Body.Outlines, &s.RandomSecret)
+	}()
+
+	log.Print("[DEBUG] opml import started.")
+	outputFileStatus("OPML import starting")
+}
+
+func importFeeds(opmlUrls []opml.Outline, secret *string) []*Entry {
+	importedEntries := make([]*Entry, 0)
+	bookmarkEntities := make([]Entity, 0)
+
+	for urlIndex, urlParam := range opmlUrls {
+		if !IsValidHttpUrl(urlParam.XMLURL) {
+			importedEntries = append(importedEntries, &Entry{
+				Url:          urlParam.XMLURL,
+				ErrorMessage: "Invalid URL provided (must be in absolute format and with https or https scheme)...",
+				Error:        true,
+				ErrorCode:    http.StatusBadRequest,
+			})
+			importProgressCh <- ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
+			log.Printf("[DEBUG] invalid feed url '%q' skipping...", urlParam)
+			continue
+		}
+
+		feedUrl := getFeedUrl(urlParam.XMLURL)
+		if feedUrl == "" {
+			importedEntries = append(importedEntries, &Entry{
+				Url:          urlParam.XMLURL,
+				ErrorMessage: "Could not find a feed URL in there...",
+				Error:        true,
+				ErrorCode:    http.StatusBadRequest,
+			})
+			importProgressCh <- ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
+			log.Printf("[DEBUG] Could not find a feed URL in %s", feedUrl)
+			continue
+		}
+
+		sk := getPrivateKeyFromFeedUrl(feedUrl, *secret)
+		publicKey, err := nostr.GetPublicKey(sk)
+		if err != nil {
+			importedEntries = append(importedEntries, &Entry{
+				Url:          urlParam.XMLURL,
+				ErrorMessage: "Bad private key",
+				Error:        true,
+				ErrorCode:    http.StatusBadRequest,
+			})
+			importProgressCh <- ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
+			log.Printf("[ERROR] feed %s bad private key: %s", feedUrl, err)
+			continue
+		}
+
+		publicKey = strings.TrimSpace(publicKey)
+
+		feedExists, err := feedExists(publicKey, sk, feedUrl)
+		if feedExists {
+			importedEntries = append(importedEntries, &Entry{
+				Url:          urlParam.XMLURL,
+				ErrorMessage: "Feed already exists",
+				Error:        true,
+				ErrorCode:    http.StatusBadRequest,
+			})
+			importProgressCh <- ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
+			log.Printf("[DEBUG] feedUrl %s with pubkey %s already exists", feedUrl, publicKey)
+			continue
+		} else if err != nil {
+			importedEntries = append(importedEntries, &Entry{
+				Url:          urlParam.XMLURL,
+				ErrorMessage: "Could not determine if feed exists",
+				Error:        true,
+				ErrorCode:    http.StatusBadRequest,
+			})
+			importProgressCh <- ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
+			log.Printf("[ERROR] could not determine if feedUrl %s with pubkey %s exists", feedUrl, publicKey)
+			continue
+		}
+
+		parsedFeed, err := parseFeedForUrl(feedUrl)
+		if err != nil {
+			importedEntries = append(importedEntries, &Entry{
+				Url:          urlParam.XMLURL,
+				ErrorMessage: "Can not parse feed: " + err.Error(),
+				Error:        true,
+				ErrorCode:    http.StatusBadRequest,
+			})
+			importProgressCh <- ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
+			log.Printf("[ERROR] can not parse feed %s", err)
+			continue
+		}
+
+		npub, _ := nip19.EncodePublicKey(publicKey)
+		guiEntry := Entry{
+			Url:          feedUrl,
+			PubKey:       publicKey,
+			NPubKey:      npub,
+			ErrorMessage: "",
+			Error:        false,
+			ErrorCode:    0,
+		}
+		importedEntries = append(importedEntries, &guiEntry)
+		importProgressCh <- ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
+
+		if err := qrcode.WriteFile(fmt.Sprintf("nostr:%s", guiEntry.NPubKey), qrcode.Low, 128, fmt.Sprintf("%s/%s.png", s.QRCodePath, guiEntry.NPubKey)); err != nil {
+			log.Print("[ERROR] ", err)
+		}
+
+		if err := createMetadataNote(publicKey, sk, parsedFeed, s.DefaultProfilePicUrl); err != nil {
+			log.Printf("[ERROR] creating metadata note %s", err)
+		}
+
+		latestCreatedAt := initFeed(publicKey, sk, feedUrl, parsedFeed)
+		bookmarkEntities = append(bookmarkEntities, Entity{PublicKey: publicKey, PrivateKey: sk, URL: feedUrl, LastUpdate: latestCreatedAt})
+	}
+
+	if err := addEntityToBookmarkEvent(bookmarkEntities); err != nil {
+		log.Printf("[ERROR] adding feed entities: %s", err)
+	}
+
+	//update kind 3 event
+	followAction := FollowManagment{
+		Action: Sync,
+	}
+	followManagmentCh <- followAction
+
+	return importedEntries
+}
+
+func handleImportProgress(w http.ResponseWriter, r *http.Request) {
+	importedURL := <-importProgressCh
+	progressPct := ((float32(importedURL.entryIndex) + 1.0) / float32(importedURL.totalEntries)) * 100.0
+
+	if importedURL.entryIndex+1 < importedURL.totalEntries {
+		htmlStr := fmt.Sprintf("<div class='navbar-item' id='status-area' hx-get='/progress' hx-target='this' hx-swap='outerHTML' hx-trigger='every 600ms'>Processing...%d of %d<div class='navbar-item'><div id='progress' name='progress-bar' class='progress-bar' style='--width: %f' data-label=''></div></div></div>", importedURL.entryIndex+1, importedURL.totalEntries, progressPct)
+		tmpl, _ := template.New("t").Parse(htmlStr)
+		tmpl.Execute(w, nil)
+	} else {
+		htmlStr := fmt.Sprintf("<div class='navbar-item' id='status-area' hx-get='/progress' hx-target='this' hx-swap='outerHTML' hx-trigger='change from:#opml-import-form' hx-sync='#opml-file: queue first'><a href='/'>Refresh</a>..or..<a href='/detail'>Details</a> <div class='navbar-item'><div id='progress' name='progress-bar' class='progress-bar' style='--width: %f' data-label='Import Complete...'></div></div></div>", progressPct)
+		tmpl, _ := template.New("t").Parse(htmlStr)
+		tmpl.Execute(w, nil)
+	}
+}
+
+func handleImportDetail(w http.ResponseWriter, r *http.Request) {
 	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/imported.html", s.TemplatePath)))
 
-	type Results struct {
+	numBadFeeds := 0
+	for _, feed := range recentImportedEntries {
+		if feed.Error {
+			numBadFeeds++
+		}
+	}
+
+	results := struct {
 		RelayName    string
 		Feeds        []*Entry
 		GoodFeeds    int
@@ -224,73 +416,10 @@ func handleImportOpml(w http.ResponseWriter, r *http.Request) {
 		Error        bool
 		ErrorMessage string
 		ErrorCode    int
-	}
-
-	badResults := Results{
+	}{
 		RelayName:    s.RelayName,
-		Feeds:        []*Entry{},
-		GoodFeeds:    0,
-		BadFeeds:     0,
-		Error:        false,
-		ErrorMessage: "OPML File Processed",
-		ErrorCode:    0,
-	}
-
-	if err := r.ParseMultipartForm(10 << 20); err != nil {
-		log.Printf("[ERROR] parse OPML file %s", err)
-		badResults.ErrorMessage = "[ERROR] parse OPML file"
-		if err := tmpl.Execute(w, badResults); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-		return
-	}
-
-	file, _, err := r.FormFile("opml-file")
-	if err != nil {
-		log.Printf("[ERROR] form OPML file: %s", err)
-		badResults.ErrorMessage = "[ERROR] formfile OPML"
-		if err := tmpl.Execute(w, badResults); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-		return
-	}
-	defer file.Close()
-
-	fileBytes, err := io.ReadAll(file)
-	if err != nil {
-		log.Printf("[ERROR] reading OPML file: %s", err)
-		badResults.ErrorMessage = "[ERROR] reading OPML file"
-		if err := tmpl.Execute(w, badResults); err != nil {
-			log.Print("[ERROR] ", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-		return
-	}
-
-	doc, err := opml.NewOPML(fileBytes)
-	if err != nil {
-		log.Printf("[ERROR] OPML bad file format %s", err)
-		badResults.ErrorMessage = "[ERROR] OPML bad file format"
-		if err := tmpl.Execute(w, badResults); err != nil {
-			log.Print("[ERROR] ", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-		return
-	}
-
-	feedEntries := importFeeds(doc.Body.Outlines, &s.RandomSecret)
-	numBadFeeds := 0
-
-	for _, feed := range feedEntries {
-		if feed.Error {
-			numBadFeeds++
-		}
-	}
-
-	results := Results{
-		RelayName:    s.RelayName,
-		Feeds:        feedEntries,
-		GoodFeeds:    len(feedEntries) - numBadFeeds,
+		Feeds:        recentImportedEntries,
+		GoodFeeds:    len(recentImportedEntries) - numBadFeeds,
 		BadFeeds:     numBadFeeds,
 		Error:        false,
 		ErrorMessage: "OPML File Processed",
@@ -302,122 +431,6 @@ func handleImportOpml(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	log.Print("[DEBUG] opml import started.")
-}
-
-func importFeeds(opmlUrls []opml.Outline, secret *string) []*Entry {
-
-	feedEntries := make([]*Entry, 0)
-	feedEntities := make([]Entity, 0)
-
-	for _, urlParam := range opmlUrls {
-		if !IsValidHttpUrl(urlParam.XMLURL) {
-			feedEntries = append(feedEntries, &Entry{
-				Url:          urlParam.XMLURL,
-				ErrorMessage: "Invalid URL provided (must be in absolute format and with https or https scheme)...",
-				Error:        true,
-				ErrorCode:    http.StatusBadRequest,
-			})
-			log.Printf("[DEBUG] invalid feed url '%q' skipping...", urlParam)
-			continue
-		}
-
-		feedUrl := getFeedUrl(urlParam.XMLURL)
-		if feedUrl == "" {
-			feedEntries = append(feedEntries, &Entry{
-				Url:          urlParam.XMLURL,
-				ErrorMessage: "Could not find a feed URL in there...",
-				Error:        true,
-				ErrorCode:    http.StatusBadRequest,
-			})
-			log.Printf("[DEBUG] Could not find a feed URL in %s", feedUrl)
-			continue
-		}
-
-		sk := getPrivateKeyFromFeedUrl(feedUrl, *secret)
-		publicKey, err := nostr.GetPublicKey(sk)
-		if err != nil {
-			feedEntries = append(feedEntries, &Entry{
-				Url:          urlParam.XMLURL,
-				ErrorMessage: "Bad private key: " + err.Error(),
-				Error:        true,
-				ErrorCode:    http.StatusBadRequest,
-			})
-			log.Printf("[ERROR] bad private key from feed: %s", err)
-			continue
-		}
-
-		publicKey = strings.TrimSpace(publicKey)
-
-		feedExists, err := feedExists(publicKey, sk, feedUrl)
-		if feedExists {
-			feedEntries = append(feedEntries, &Entry{
-				Url:          urlParam.XMLURL,
-				ErrorMessage: fmt.Sprintf("Feed %s already exists", feedUrl),
-				Error:        true,
-				ErrorCode:    http.StatusBadRequest,
-			})
-			log.Printf("[DEBUG] feedUrl %s with pubkey %s already exists", feedUrl, publicKey)
-			continue
-		} else if err != nil {
-			feedEntries = append(feedEntries, &Entry{
-				Url:          urlParam.XMLURL,
-				ErrorMessage: fmt.Sprintf("Could not determine if feed %s exists", feedUrl),
-				Error:        true,
-				ErrorCode:    http.StatusBadRequest,
-			})
-			log.Printf("[ERROR] could not determine if feedUrl %s with pubkey %s exists", feedUrl, publicKey)
-			continue
-		}
-
-		parsedFeed, err := parseFeedForUrl(feedUrl)
-		if err != nil {
-			feedEntries = append(feedEntries, &Entry{
-				Url:          urlParam.XMLURL,
-				ErrorMessage: "Can not parse feed: " + err.Error(),
-				Error:        true,
-				ErrorCode:    http.StatusBadRequest,
-			})
-			log.Printf("[ERROR] can not parse feed %s", err)
-			continue
-		}
-
-		npub, _ := nip19.EncodePublicKey(publicKey)
-		feedEntr := Entry{
-			Url:          feedUrl,
-			PubKey:       publicKey,
-			NPubKey:      npub,
-			ErrorMessage: "",
-			Error:        false,
-			ErrorCode:    0,
-		}
-		feedEntries = append(feedEntries, &feedEntr)
-
-		go func() {
-			if err := qrcode.WriteFile(fmt.Sprintf("nostr:%s", feedEntr.NPubKey), qrcode.Low, 128, fmt.Sprintf("%s/%s.png", s.QRCodePath, feedEntr.NPubKey)); err != nil {
-				log.Print("[ERROR] ", err)
-			}
-
-			if err := createMetadataNote(publicKey, sk, parsedFeed, s.DefaultProfilePicUrl); err != nil {
-				log.Printf("[ERROR] creating metadata note %s", err)
-			}
-		}()
-
-		latestCreatedAt := initFeed(publicKey, sk, feedUrl, parsedFeed)
-		feedEntities = append(feedEntities, Entity{PublicKey: publicKey, PrivateKey: sk, URL: feedUrl, LastUpdate: latestCreatedAt})
-	}
-
-	if err := addEntityToBookmarkEvent(feedEntities); err != nil {
-		log.Printf("[ERROR] adding feed entities: %s", err)
-	}
-
-	followAction := FollowManagment{
-		Action: Sync,
-	}
-	followManagmentCh <- followAction
-
-	return feedEntries
 }
 
 func handleExportOpml(w http.ResponseWriter, r *http.Request) {

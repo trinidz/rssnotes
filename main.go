@@ -31,7 +31,7 @@ type Settings struct {
 	RelayIcon        string `envconfig:"RELAY_ICON" default:"https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/commafeed.png"`
 	RandomSecret     string `envconfig:"RANDOM_SECRET" required:"true"`
 	OwnerPubkey      string `envconfig:"OWNER_PUBKEY"`
-	Version          string `envconfig:"VERSION" default:"0.0.1"`
+	Version          string `envconfig:"VERSION" default:"0.0.4"`
 
 	LogLevel       string `envconfig:"LOG_LEVEL" default:"WARN"`
 	Port           string `envconfig:"PORT" default:"3334"`
@@ -39,9 +39,9 @@ type Settings struct {
 	FrensdataPath  string `envconfig:"FRENSDATA_PATH" default:"./frens.json"`
 	SeedRelaysPath string `envconfig:"SEED_RELAYS_PATH" default:"./seedrelays.json"`
 	LogfilePath    string `envconfig:"LOGFILE_PATH" default:"./logfile.log"`
-	TemplatePath   string `envconfig:"TEMPLATE_PATH" default:"./templates"`
-	StaticPath     string `envconfig:"STATIC_PATH" default:"./static"`
-	QRCodePath     string `envconfig:"QRCODE_PATH" default:"./static/qrcodes"`
+	TemplatePath   string `envconfig:"TEMPLATE_PATH" default:"./web/templates"`
+	StaticPath     string `envconfig:"STATIC_PATH" default:"./web/assets"`
+	QRCodePath     string `envconfig:"QRCODE_PATH" default:"./web/assets/qrcodes"`
 
 	RsslayTagKey            string `envconfig:"RSSLAY_TAG_KEY" default:"rsslay"`
 	DefaultProfilePicUrl    string `envconfig:"DEFAULT_PROFILE_PICTURE_URL" default:"https://i.imgur.com/MaceU96.png"`
@@ -58,6 +58,7 @@ var (
 	db                   = badger.BadgerBackend{}
 	relay                = khatru.NewRelay()
 	followManagmentCh    = make(chan FollowManagment)
+	importProgressCh     = make(chan ImportProgressStruct)
 	pool                 *nostr.SimplePool
 	seedRelays           []string
 	tickerUpdateFeeds    *time.Ticker
@@ -150,8 +151,7 @@ func main() {
 
 	mux := relay.Router()
 	mux.HandleFunc("/", handleFrontpage)
-	mux.Handle("GET /favicon.ico", http.StripPrefix("/", http.FileServer(http.Dir(s.StaticPath))))
-	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir(s.StaticPath))))
+	mux.Handle("GET /assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir(s.StaticPath))))
 	mux.HandleFunc("GET /create", (func(w http.ResponseWriter, r *http.Request) {
 		handleCreateFeed(w, r, &s.RandomSecret)
 	}))
@@ -159,6 +159,8 @@ func main() {
 	mux.HandleFunc("POST /import", handleImportOpml)
 	mux.HandleFunc("GET /export", handleExportOpml)
 	mux.HandleFunc("GET /delete", handleDeleteFeed)
+	mux.HandleFunc("GET /progress", handleImportProgress)
+	mux.HandleFunc("GET /detail", handleImportDetail)
 
 	mux.HandleFunc("GET /health", handleHealth)
 	mux.HandleFunc("GET /log", handleLog)
