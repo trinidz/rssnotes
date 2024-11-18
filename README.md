@@ -63,10 +63,12 @@ cd rssnotes
 ```
 2. Download the correct [rssnotes released binary](https://github.com/trinidz/rssnotes/releases) for your system into the rssnotes folder.
 
-3. Copy and rename the binary and the necessary files:
+3. Copy and rename the binary and other necessary files:
 ```bash
 # The binary format is simillar to rssnotes-rx.x.x-ostype-arch. Change the cp command to match the specific binary you downloaded.
 cp rssnotes-rx.x.x-ostype-arch rssnotes
+# Make sure the binary is executable
+chmod +x rssnotes
 ```
 ```bash
 cp sample.env .env
