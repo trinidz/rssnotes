@@ -26,19 +26,26 @@ type ImportProgressStruct struct {
 }
 
 type Entity struct {
-	PublicKey  string
+	PubKey     string
 	PrivateKey string
 	URL        string
+	ImageURL   string
 	LastUpdate int64
 }
 
-type Entry struct {
-	PubKey       string
-	NPubKey      string
-	Url          string
-	Error        bool
-	ErrorMessage string
-	ErrorCode    int
+type GUIEntry struct {
+	BookmarkEntity Entity
+	NPubKey        string
+	Error          bool
+	ErrorMessage   string
+	ErrorCode      int
+}
+
+// Nostr Kind-0
+type KindProfileMetadata struct {
+	About   string
+	Picture string
+	Name    string
 }
 
 // OpmlOutline holds all information about an outline.
@@ -131,11 +138,4 @@ func NewOPMLFromFile(filePath string) (*OPML, error) {
 	}
 
 	return NewOPML(b)
-}
-
-// Nostr Kind-0
-type KindProfileMetadata struct {
-	About   string
-	Picture string
-	Name    string
 }

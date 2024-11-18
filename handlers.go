@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	recentImportedEntries []*Entry
+	recentImportedEntries []*GUIEntry
 )
 
 func handleFrontpage(w http.ResponseWriter, _ *http.Request) {
@@ -39,7 +39,7 @@ func handleFrontpage(w http.ResponseWriter, _ *http.Request) {
 		RelayDescription string
 		RelayURL         string
 		Count            int
-		Entries          []Entry
+		Entries          []GUIEntry
 	}{
 		RelayName:        s.RelayName,
 		RelayPubkey:      s.RelayPubkey,
@@ -71,14 +71,16 @@ func handleCreateFeed(w http.ResponseWriter, r *http.Request, secret *string) {
 		PubKey       string
 		NPubKey      string
 		Url          string
+		ImageUrl     string
 		ErrorCode    int
 		Error        bool
 		ErrorMessage string
 	}{
 		RelayName:    s.RelayName,
-		PubKey:       entry.PubKey,
+		PubKey:       entry.BookmarkEntity.PubKey,
 		NPubKey:      entry.NPubKey,
-		Url:          entry.Url,
+		Url:          entry.BookmarkEntity.URL,
+		ImageUrl:     entry.BookmarkEntity.ImageURL,
 		ErrorCode:    entry.ErrorCode,
 		Error:        entry.Error,
 		ErrorMessage: entry.ErrorMessage,
@@ -91,37 +93,37 @@ func handleCreateFeed(w http.ResponseWriter, r *http.Request, secret *string) {
 	}
 }
 
-func createFeed(r *http.Request, secret *string) *Entry {
+func createFeed(r *http.Request, secret *string) *GUIEntry {
 	urlParam := r.URL.Query().Get("url")
 
-	entry := Entry{
+	guientry := GUIEntry{
 		Error: false,
 	}
 
 	if !IsValidHttpUrl(urlParam) {
 		log.Printf("[DEBUG] tried to create feed from invalid feed url '%q' skipping...", urlParam)
-		entry.ErrorCode = http.StatusBadRequest
-		entry.Error = true
-		entry.ErrorMessage = "Invalid URL provided (must be in absolute format and with https or https scheme)..."
-		return &entry
+		guientry.ErrorCode = http.StatusBadRequest
+		guientry.Error = true
+		guientry.ErrorMessage = "Invalid URL provided (must be in absolute format and with https or https scheme)..."
+		return &guientry
 	}
 
 	feedUrl := getFeedUrl(urlParam)
 	if feedUrl == "" {
-		entry.ErrorCode = http.StatusBadRequest
-		entry.Error = true
-		entry.ErrorMessage = "Could not find a feed URL in there..."
-		return &entry
+		guientry.ErrorCode = http.StatusBadRequest
+		guientry.Error = true
+		guientry.ErrorMessage = "Could not find a feed URL in there..."
+		return &guientry
 	}
 
 	sk := getPrivateKeyFromFeedUrl(feedUrl, *secret)
 	publicKey, err := nostr.GetPublicKey(sk)
 	if err != nil {
-		entry.ErrorCode = http.StatusInternalServerError
-		entry.Error = true
-		entry.ErrorMessage = "Bad private key: " + err.Error()
+		guientry.ErrorCode = http.StatusInternalServerError
+		guientry.Error = true
+		guientry.ErrorMessage = "Bad private key: " + err.Error()
 		log.Printf("[ERROR] bad private key from feed: %s", err)
-		return &entry
+		return &guientry
 	}
 
 	publicKey = strings.TrimSpace(publicKey)
@@ -129,44 +131,56 @@ func createFeed(r *http.Request, secret *string) *Entry {
 	if feedExists, err := feedExists(publicKey, sk, feedUrl); err != nil || feedExists {
 		if feedExists {
 			log.Printf("[DEBUG] feedUrl %s with pubkey %s already exists", feedUrl, publicKey)
-			entry.ErrorMessage = fmt.Sprintf("Feed %s already exists", feedUrl)
+			guientry.ErrorMessage = fmt.Sprintf("Feed %s already exists", feedUrl)
 		} else {
 			log.Printf("[ERROR] could not determine if feedUrl %s with pubkey %s exists", feedUrl, publicKey)
-			entry.ErrorMessage = fmt.Sprintf("Could not determine if feed %s exists", feedUrl)
+			guientry.ErrorMessage = fmt.Sprintf("Could not determine if feed %s exists", feedUrl)
 		}
-		entry.ErrorCode = http.StatusInternalServerError
-		entry.Error = true
-		return &entry
+		guientry.ErrorCode = http.StatusInternalServerError
+		guientry.Error = true
+		return &guientry
 	}
 
 	parsedFeed, err := parseFeedForUrl(feedUrl)
 	if err != nil {
-		entry.ErrorCode = http.StatusBadRequest
-		entry.Error = true
-		entry.ErrorMessage = "Can not parse feed: " + err.Error()
+		guientry.ErrorCode = http.StatusBadRequest
+		guientry.Error = true
+		guientry.ErrorMessage = "Can not parse feed: " + err.Error()
 		log.Printf("[ERROR] can not parse feed %s", err)
-		return &entry
+		return &guientry
 	}
 
-	if err := createMetadataNote(publicKey, sk, parsedFeed, s.DefaultProfilePicUrl); err != nil {
-		log.Printf("[ERROR] creating metadata note %s", err)
+	guientry.BookmarkEntity.URL = feedUrl
+	guientry.BookmarkEntity.PubKey = publicKey
+	guientry.NPubKey, _ = nip19.EncodePublicKey(publicKey)
+
+	guientry.BookmarkEntity.ImageURL = s.DefaultProfilePicUrl
+	if parsedFeed.Image != nil && IsValidIconUrl(parsedFeed.Image.URL) {
+		guientry.BookmarkEntity.ImageURL = parsedFeed.Image.URL
 	}
 
-	latestCreatedAt := initFeed(publicKey, sk, feedUrl, parsedFeed)
+	go func() {
+		if err := createMetadataNote(publicKey, sk, parsedFeed, s.DefaultProfilePicUrl); err != nil {
+			log.Printf("[ERROR] creating metadata note %s", err)
+		}
 
-	if err := addEntityToBookmarkEvent([]Entity{{publicKey, sk, feedUrl, latestCreatedAt}}); err != nil {
-		log.Printf("[ERROR] feed entity %s not added to bookmark", feedUrl)
-	}
+		latestCreatedAt := initFeed(publicKey, sk, feedUrl, parsedFeed)
 
-	entry.Url = feedUrl
-	entry.PubKey = publicKey
-	entry.NPubKey, _ = nip19.EncodePublicKey(publicKey)
+		if err := addEntityToBookmarkEvent([]Entity{
+			{PubKey: publicKey,
+				PrivateKey: sk,
+				URL:        feedUrl,
+				ImageURL:   guientry.BookmarkEntity.ImageURL,
+				LastUpdate: latestCreatedAt}}); err != nil {
+			log.Printf("[ERROR] feed entity %s not added to bookmark", feedUrl)
+		}
+	}()
 
-	if err := qrcode.WriteFile(fmt.Sprintf("nostr:%s", entry.NPubKey), qrcode.Low, 128, fmt.Sprintf("%s/%s.png", s.QRCodePath, entry.NPubKey)); err != nil {
+	if err := qrcode.WriteFile(fmt.Sprintf("nostr:%s", guientry.NPubKey), qrcode.Low, 128, fmt.Sprintf("%s/%s.png", s.QRCodePath, guientry.NPubKey)); err != nil {
 		log.Print("[ERROR]", err)
 	}
 
-	return &entry
+	return &guientry
 }
 
 func handleDeleteFeed(w http.ResponseWriter, r *http.Request) {
@@ -174,7 +188,7 @@ func handleDeleteFeed(w http.ResponseWriter, r *http.Request) {
 
 	followAction := FollowManagment{
 		Action:       Delete,
-		FollowEntity: Entity{PublicKey: feedPubkey},
+		FollowEntity: Entity{PubKey: feedPubkey},
 	}
 	followManagmentCh <- followAction
 
@@ -198,7 +212,7 @@ func handleDeleteFeed(w http.ResponseWriter, r *http.Request) {
 		RelayDescription string
 		RelayURL         string
 		Count            int
-		Entries          []Entry
+		Entries          []GUIEntry
 	}{
 		RelayName:        s.RelayName,
 		RelayPubkey:      s.RelayPubkey,
@@ -264,17 +278,17 @@ func handleImportOpml(w http.ResponseWriter, r *http.Request) {
 	outputFileStatus("OPML import starting")
 }
 
-func importFeeds(opmlUrls []opml.Outline, secret *string) []*Entry {
-	importedEntries := make([]*Entry, 0)
+func importFeeds(opmlUrls []opml.Outline, secret *string) []*GUIEntry {
+	importedEntries := make([]*GUIEntry, 0)
 	bookmarkEntities := make([]Entity, 0)
 
 	for urlIndex, urlParam := range opmlUrls {
 		if !IsValidHttpUrl(urlParam.XMLURL) {
-			importedEntries = append(importedEntries, &Entry{
-				Url:          urlParam.XMLURL,
-				ErrorMessage: "Invalid URL provided (must be in absolute format and with https or https scheme)...",
-				Error:        true,
-				ErrorCode:    http.StatusBadRequest,
+			importedEntries = append(importedEntries, &GUIEntry{
+				BookmarkEntity: Entity{URL: urlParam.XMLURL},
+				ErrorMessage:   "Invalid URL provided (must be in absolute format and with https or https scheme)...",
+				Error:          true,
+				ErrorCode:      http.StatusBadRequest,
 			})
 			importProgressCh <- ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
 			log.Printf("[DEBUG] invalid feed url '%q' skipping...", urlParam)
@@ -283,11 +297,11 @@ func importFeeds(opmlUrls []opml.Outline, secret *string) []*Entry {
 
 		feedUrl := getFeedUrl(urlParam.XMLURL)
 		if feedUrl == "" {
-			importedEntries = append(importedEntries, &Entry{
-				Url:          urlParam.XMLURL,
-				ErrorMessage: "Could not find a feed URL in there...",
-				Error:        true,
-				ErrorCode:    http.StatusBadRequest,
+			importedEntries = append(importedEntries, &GUIEntry{
+				BookmarkEntity: Entity{URL: urlParam.XMLURL},
+				ErrorMessage:   "Could not find a feed URL in there...",
+				Error:          true,
+				ErrorCode:      http.StatusBadRequest,
 			})
 			importProgressCh <- ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
 			log.Printf("[DEBUG] Could not find a feed URL in %s", feedUrl)
@@ -297,11 +311,11 @@ func importFeeds(opmlUrls []opml.Outline, secret *string) []*Entry {
 		sk := getPrivateKeyFromFeedUrl(feedUrl, *secret)
 		publicKey, err := nostr.GetPublicKey(sk)
 		if err != nil {
-			importedEntries = append(importedEntries, &Entry{
-				Url:          urlParam.XMLURL,
-				ErrorMessage: "Bad private key",
-				Error:        true,
-				ErrorCode:    http.StatusBadRequest,
+			importedEntries = append(importedEntries, &GUIEntry{
+				BookmarkEntity: Entity{URL: urlParam.XMLURL},
+				ErrorMessage:   "Bad private key",
+				Error:          true,
+				ErrorCode:      http.StatusBadRequest,
 			})
 			importProgressCh <- ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
 			log.Printf("[ERROR] feed %s bad private key: %s", feedUrl, err)
@@ -312,21 +326,21 @@ func importFeeds(opmlUrls []opml.Outline, secret *string) []*Entry {
 
 		feedExists, err := feedExists(publicKey, sk, feedUrl)
 		if feedExists {
-			importedEntries = append(importedEntries, &Entry{
-				Url:          urlParam.XMLURL,
-				ErrorMessage: "Feed already exists",
-				Error:        true,
-				ErrorCode:    http.StatusBadRequest,
+			importedEntries = append(importedEntries, &GUIEntry{
+				BookmarkEntity: Entity{URL: urlParam.XMLURL},
+				ErrorMessage:   "Feed already exists",
+				Error:          true,
+				ErrorCode:      http.StatusBadRequest,
 			})
 			importProgressCh <- ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
 			log.Printf("[DEBUG] feedUrl %s with pubkey %s already exists", feedUrl, publicKey)
 			continue
 		} else if err != nil {
-			importedEntries = append(importedEntries, &Entry{
-				Url:          urlParam.XMLURL,
-				ErrorMessage: "Could not determine if feed exists",
-				Error:        true,
-				ErrorCode:    http.StatusBadRequest,
+			importedEntries = append(importedEntries, &GUIEntry{
+				BookmarkEntity: Entity{URL: urlParam.XMLURL},
+				ErrorMessage:   "Could not determine if feed exists",
+				Error:          true,
+				ErrorCode:      http.StatusBadRequest,
 			})
 			importProgressCh <- ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
 			log.Printf("[ERROR] could not determine if feedUrl %s with pubkey %s exists", feedUrl, publicKey)
@@ -335,11 +349,11 @@ func importFeeds(opmlUrls []opml.Outline, secret *string) []*Entry {
 
 		parsedFeed, err := parseFeedForUrl(feedUrl)
 		if err != nil {
-			importedEntries = append(importedEntries, &Entry{
-				Url:          urlParam.XMLURL,
-				ErrorMessage: "Can not parse feed: " + err.Error(),
-				Error:        true,
-				ErrorCode:    http.StatusBadRequest,
+			importedEntries = append(importedEntries, &GUIEntry{
+				BookmarkEntity: Entity{URL: urlParam.XMLURL},
+				ErrorMessage:   "Can not parse feed: " + err.Error(),
+				Error:          true,
+				ErrorCode:      http.StatusBadRequest,
 			})
 			importProgressCh <- ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
 			log.Printf("[ERROR] can not parse feed %s", err)
@@ -347,13 +361,12 @@ func importFeeds(opmlUrls []opml.Outline, secret *string) []*Entry {
 		}
 
 		npub, _ := nip19.EncodePublicKey(publicKey)
-		guiEntry := Entry{
-			Url:          feedUrl,
-			PubKey:       publicKey,
-			NPubKey:      npub,
-			ErrorMessage: "",
-			Error:        false,
-			ErrorCode:    0,
+		guiEntry := GUIEntry{
+			BookmarkEntity: Entity{URL: urlParam.XMLURL, PubKey: publicKey},
+			NPubKey:        npub,
+			ErrorMessage:   "",
+			Error:          false,
+			ErrorCode:      0,
 		}
 		importedEntries = append(importedEntries, &guiEntry)
 		importProgressCh <- ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
@@ -366,8 +379,13 @@ func importFeeds(opmlUrls []opml.Outline, secret *string) []*Entry {
 			log.Printf("[ERROR] creating metadata note %s", err)
 		}
 
+		localImageURL := s.DefaultProfilePicUrl
+		if parsedFeed.Image != nil && IsValidIconUrl(parsedFeed.Image.URL) {
+			localImageURL = parsedFeed.Image.URL
+		}
+
 		latestCreatedAt := initFeed(publicKey, sk, feedUrl, parsedFeed)
-		bookmarkEntities = append(bookmarkEntities, Entity{PublicKey: publicKey, PrivateKey: sk, URL: feedUrl, LastUpdate: latestCreatedAt})
+		bookmarkEntities = append(bookmarkEntities, Entity{PubKey: publicKey, PrivateKey: sk, URL: feedUrl, ImageURL: localImageURL, LastUpdate: latestCreatedAt})
 	}
 
 	if err := addEntityToBookmarkEvent(bookmarkEntities); err != nil {
@@ -410,7 +428,7 @@ func handleImportDetail(w http.ResponseWriter, r *http.Request) {
 
 	results := struct {
 		RelayName    string
-		Feeds        []*Entry
+		Feeds        []*GUIEntry
 		GoodFeeds    int
 		BadFeeds     int
 		Error        bool
@@ -448,7 +466,7 @@ func handleExportOpml(w http.ResponseWriter, r *http.Request) {
 	for _, feed := range data {
 		rssOMPL.Body.Outlines = append(rssOMPL.Body.Outlines, opml.Outline{
 			Type:    "rss",
-			Text:    feed.PublicKey,
+			Text:    feed.PubKey,
 			Title:   feed.PrivateKey,
 			XMLURL:  feed.URL,
 			HTMLURL: feed.URL,
@@ -475,13 +493,12 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	if query == "" || len(query) <= 4 {
 
 		errorData := struct {
-			RelayName      string
-			Count          uint64
-			FilteredCount  uint64
-			Entries        []Entry
-			MainDomainName string
-			Error          bool
-			ErrorMessage   string
+			RelayName     string
+			Count         uint64
+			FilteredCount uint64
+			Entries       []GUIEntry
+			Error         bool
+			ErrorMessage  string
 		}{
 			RelayName:     s.RelayName,
 			Count:         0,
@@ -504,21 +521,20 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	items := make([]Entry, 0)
+	items := make([]GUIEntry, 0)
 	for _, entry := range savedEntries {
-		if strings.Contains(entry.Url, query) {
+		if strings.Contains(entry.BookmarkEntity.URL, query) {
 			items = append(items, entry)
 		}
 	}
 
 	data := struct {
-		RelayName      string
-		Count          uint64
-		FilteredCount  uint64
-		Entries        []Entry
-		MainDomainName string
-		Error          bool
-		ErrorMessage   string
+		RelayName     string
+		Count         uint64
+		FilteredCount uint64
+		Entries       []GUIEntry
+		Error         bool
+		ErrorMessage  string
 	}{
 		RelayName:     s.RelayName,
 		Count:         uint64(len(savedEntries)),

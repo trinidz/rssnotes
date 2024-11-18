@@ -98,25 +98,25 @@
     <table class="table">
         <tbody>
         <tr>
-            <th>Public key (Hex)</th>
-            <th>Public key</th>
+            <th>Icon</th>
             <th>Feed URL</th>
+            <th>Public keys (npub / hex)</th>
             <th>Subscribe</th>
             <th>Manage</th>
         </tr>
         {{range .Entries}}
         <tr>
-            <td><a href="https://www.nostr.guru/p/{{.PubKey}}" style="word-break: break-all;">{{.PubKey}}</a>
-            </td>
-            <td><a href="https://njump.me/{{.NPubKey}}" style="word-break: break-all;">{{.NPubKey}}</a>
-            </td>
-            <td><a href="{{.Url}}" style="word-break: break-all;">{{.Url}}</a>
-            </td>
+            <td><img src="{{.BookmarkEntity.ImageURL}}" alt="feed icon" width="128" height="128"></td> 
+            <td><a href="{{.BookmarkEntity.URL}}" style="word-break: break-all;">{{.BookmarkEntity.URL}}</a></td>
+            <td>
+                <a href="https://njump.me/{{.NPubKey}}" style="word-break: break-all;">{{.NPubKey}}</a>
+                <p>---</p>
+                <a href="https://www.nostr.guru/p/{{.BookmarkEntity.PubKey}}" style="word-break: break-all;">{{.BookmarkEntity.PubKey}}</a>  
             <td><img src="/assets/qrcodes/{{.NPubKey}}.png" alt="npub qrcode" width="128" height="128">
             </td>
             <td>
                 <div class="buttons">
-                    <a href="/delete?pubkey={{.PubKey}}" target="_self" class="button is-small is-link is-light">Delete</a>
+                    <a href="/delete?pubkey={{.BookmarkEntity.PubKey}}" target="_self" class="button is-small is-link is-light">Delete</a>
                 </div>
             </td>
         </tr>

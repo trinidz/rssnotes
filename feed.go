@@ -360,18 +360,18 @@ func updateAllFeeds() {
 		return
 	}
 	for _, currentEntity := range currentEntities {
-		parsedFeed, entity := parseFeedForPubkey(currentEntity.PublicKey, s.DeleteFailingFeeds)
+		parsedFeed, entity := parseFeedForPubkey(currentEntity.PubKey, s.DeleteFailingFeeds)
 		if parsedFeed == nil {
 			return
 		}
 
-		if err := createMetadataNote(currentEntity.PublicKey, currentEntity.PrivateKey, parsedFeed, s.DefaultProfilePicUrl); err != nil {
+		if err := createMetadataNote(currentEntity.PubKey, currentEntity.PrivateKey, parsedFeed, s.DefaultProfilePicUrl); err != nil {
 			log.Printf("[ERROR] could not create metadata note: %s", err)
 		}
 
 		for _, item := range parsedFeed.Items {
 			defaultCreatedAt := time.Unix(time.Now().Unix(), 0)
-			evt := feedItemToNote(currentEntity.PublicKey, item, parsedFeed, defaultCreatedAt, entity.URL, s.MaxContentLength)
+			evt := feedItemToNote(currentEntity.PubKey, item, parsedFeed, defaultCreatedAt, entity.URL, s.MaxContentLength)
 			if entity.LastUpdate < evt.CreatedAt.Time().Unix() {
 				if err := evt.Sign(entity.PrivateKey); err != nil {
 					log.Printf("[ERROR] %s", err)
@@ -392,7 +392,7 @@ func updateAllFeeds() {
 			}
 		}
 
-		if err := updateEntityInBookmarkEvent(entity.PublicKey, latestCreatedAt); err != nil {
+		if err := updateEntityInBookmarkEvent(entity.PubKey, latestCreatedAt); err != nil {
 			log.Printf("[ERROR] feed entity %s not updated", entity.URL)
 		}
 

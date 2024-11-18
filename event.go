@@ -128,7 +128,7 @@ func getLocalFollows() nostr.Tags {
 	}
 
 	for _, savedEnt := range savedEnts {
-		localFollows = append(localFollows, nostr.Tag{"p", savedEnt.PublicKey})
+		localFollows = append(localFollows, nostr.Tag{"p", savedEnt.PubKey})
 	}
 
 	return localFollows
@@ -191,24 +191,7 @@ func deleteRemoteFollow(pubkeyHex string) nostr.Tags {
 	return nil
 }
 
-func getRelayListFromFile(filePath string) []string {
-	file, err := os.ReadFile(filePath)
-	if err != nil {
-		log.Fatalf("Failed to read file: %s", err)
-	}
-
-	var relayList []string
-	if err := json.Unmarshal(file, &relayList); err != nil {
-		log.Fatalf("Failed to parse JSON: %s", err)
-	}
-
-	for i, relay := range relayList {
-		relayList[i] = "wss://" + strings.TrimSpace(relay)
-	}
-	return relayList
-}
-
-// TRUE if a rsslay feedUrl already exists in bookmark note
+// TRUE if a rsslay feedUrl already exists in bookmark event
 func feedExists(pubkeyHex, privKeyHex, feedUrl string) (bool, error) {
 	var bookMarkTags nostr.Tags
 
@@ -402,12 +385,12 @@ func deleteEntityInBookmarkEvent(pubKeyORfeedUrl string) error {
 
 				//delete related notes
 				if err := deleteLocalEvents(nostr.Filter{
-					Authors: []string{rsslayEntity.PublicKey},
+					Authors: []string{rsslayEntity.PubKey},
 					Kinds:   []int{nostr.KindTextNote, nostr.KindProfileMetadata}}); err != nil {
 					log.Printf("[ERROR] deleting feed events: %s", err)
 				}
 
-				npub, err := nip19.EncodePublicKey(rsslayEntity.PublicKey)
+				npub, err := nip19.EncodePublicKey(rsslayEntity.PubKey)
 				if err != nil {
 					log.Printf("[ERROR] %s", err)
 					return err
@@ -430,7 +413,7 @@ func deleteEntityInBookmarkEvent(pubKeyORfeedUrl string) error {
 }
 
 // return all saved FeedURL entries
-func getSavedEntries() ([]Entry, error) {
+func getSavedEntries() ([]GUIEntry, error) {
 
 	var bookMarkTags nostr.Tags
 	var rsslayEntity Entity
@@ -443,10 +426,10 @@ func getSavedEntries() ([]Entry, error) {
 	bookMarkEvts, err := getLocalEvents(bookmarkFilter)
 	if err != nil {
 		log.Printf("[ERROR] GetLocalEvent %s", err)
-		return []Entry{}, err
+		return []GUIEntry{}, err
 	}
 
-	localEntries := make([]Entry, 0)
+	localEntries := make([]GUIEntry, 0)
 	if len(bookMarkEvts) > 0 {
 		bookMarkTags = bookMarkEvts[0].Tags.GetAll([]string{s.RsslayTagKey})
 		for _, tag := range bookMarkTags {
@@ -455,11 +438,14 @@ func getSavedEntries() ([]Entry, error) {
 				log.Printf("[ERROR] %s", err)
 			}
 
-			npub, _ := nip19.EncodePublicKey(rsslayEntity.PublicKey)
-			localEntries = append(localEntries, Entry{
-				PubKey:  rsslayEntity.PublicKey,
+			npub, _ := nip19.EncodePublicKey(rsslayEntity.PubKey)
+			localEntries = append(localEntries, GUIEntry{
+				BookmarkEntity: Entity{
+					PubKey:     rsslayEntity.PubKey,
+					URL:        rsslayEntity.URL,
+					ImageURL:   rsslayEntity.ImageURL,
+					LastUpdate: rsslayEntity.LastUpdate},
 				NPubKey: npub,
-				Url:     rsslayEntity.URL,
 			})
 		}
 	} else {
@@ -605,7 +591,7 @@ func updateFollowListEvent(followAction FollowManagment) {
 		currentOneHopNetwork = append(currentOneHopNetwork, localFollows...)
 	case Delete:
 		//reducedFollows := deleteRemoteFollow(followAction.FollowEntity.PublicKey)
-		reducedFollows := deleteLocalFollow(followAction.FollowEntity.PublicKey)
+		reducedFollows := deleteLocalFollow(followAction.FollowEntity.PubKey)
 		if reducedFollows != nil {
 			currentOneHopNetwork = append(currentOneHopNetwork, reducedFollows...)
 		} else {
