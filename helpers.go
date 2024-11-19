@@ -40,14 +40,14 @@ func IsValidHttpUrl(rawUrl string) bool {
 	return true
 }
 
-func IsValidIconUrl(url string) bool {
+func IconUrlExists(url string) bool {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		log.Printf("[DEBUG] %v", err)
 		return false
 	}
 
-	ctx, cancel := context.WithTimeout(req.Context(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(req.Context(), 2*time.Second)
 	defer cancel()
 
 	req = req.WithContext(ctx)

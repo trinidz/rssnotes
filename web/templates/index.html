@@ -84,13 +84,9 @@
         <ul>
             <li><b>For sites missing a feed (with support for <a
                     href="https://github.com/RSS-Bridge/rss-bridge/tree/master/bridges">several sites</a>), try using <a
-                    href="https://rss-bridge.github.io/rss-bridge/">RSS-Bridge</a>:</b> get the rss feed for your page
-                (ex.
-                <a href="https://rssbridge.nostr.moe/?action=display&bridge=Reddit&context=single&r=nostr&score=2&d=hot&search=&format=Atom">r/nostr
-                    in Reddit</a>) using any public instance (ex. <a href="https://rssbridge.nostr.moe/">nostr.moe
-                    public bridge</a>)
+                    href="https://rss-bridge.github.io/rss-bridge/">RSS-Bridge.</a></b>
             </li>
-            <li><b><a href="https://rsshub.app/">RssHub</a> it's capable of generating RSS feeds from pretty much
+            <li><b><a href="https://rsshub.app/">RssHub</a> is capable of generating RSS feeds from pretty much
                 everything too</b>, check it how to use it in <a
                     href="https://docs.rsshub.app/">https://docs.rsshub.app</a> (ex. <a
                     href="https://rsshub.app/github/topics/nostr">repos inside nostr topic in GitHub</a>)
@@ -155,10 +151,9 @@
         <tr>
             <td><img src="{{.BookmarkEntity.ImageURL}}" alt="feed icon" width="128" height="128"></td> 
             <td><a href="{{.BookmarkEntity.URL}}" style="word-break: break-all;">{{.BookmarkEntity.URL}}</a></td>
-            <td>
-                <a href="https://njump.me/{{.NPubKey}}" style="word-break: break-all;">{{.NPubKey}}</a>
+            <td><span>{{.NPubKey}}</span>
                 <p>---</p>
-                <a href="https://www.nostr.guru/p/{{.BookmarkEntity.PubKey}}" style="word-break: break-all;">{{.BookmarkEntity.PubKey}}</a>  
+                <span>{{.BookmarkEntity.PubKey}}</span> 
             <td><img src="/assets/qrcodes/{{.NPubKey}}.png" alt="npub qrcode" width="128" height="128">
             </td>
             <td>
@@ -177,7 +172,7 @@
         <p>
             <a href="https://github.com/trinidz/rssnotes"><strong>rssnotes</strong></a> original work by <a href="https://fiatjaf.com">fiatjaf</a> and <a href="https://piraces.dev">piraces</a> modifications by <a
                 href="https://njump.me/npub15ucds95a8m2whgj4esll39lhxta5jwk8lqvmtz6ne8lf8ksmggrqz74dq7">trinidz</a>. The source code is
-            <a href="https://github.com/trinidz/rssnotes/blob/main/LICENSE">UNlicensed</a>. Keep the good vibes 🤙
+            <a href="https://unlicense.org/">UNlicensed</a>. Keep the good vibes 🤙
         </p>
     </div>
 </footer>

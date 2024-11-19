@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -155,7 +154,7 @@ func createFeed(r *http.Request, secret *string) *GUIEntry {
 	guientry.NPubKey, _ = nip19.EncodePublicKey(publicKey)
 
 	guientry.BookmarkEntity.ImageURL = s.DefaultProfilePicUrl
-	if parsedFeed.Image != nil && IsValidIconUrl(parsedFeed.Image.URL) {
+	if parsedFeed.Image != nil && IconUrlExists(parsedFeed.Image.URL) {
 		guientry.BookmarkEntity.ImageURL = parsedFeed.Image.URL
 	}
 
@@ -380,7 +379,7 @@ func importFeeds(opmlUrls []opml.Outline, secret *string) []*GUIEntry {
 		}
 
 		localImageURL := s.DefaultProfilePicUrl
-		if parsedFeed.Image != nil && IsValidIconUrl(parsedFeed.Image.URL) {
+		if parsedFeed.Image != nil && IconUrlExists(parsedFeed.Image.URL) {
 			localImageURL = parsedFeed.Image.URL
 		}
 
@@ -455,9 +454,9 @@ func handleExportOpml(w http.ResponseWriter, r *http.Request) {
 	var rssOMPL = &opml.OPML{
 		Version: "1.0",
 		Head: opml.Head{
-			Title:       "rsslay Feeds",
+			Title:       "rssnotes Feeds",
 			DateCreated: time.Now().Format(time.RFC3339),
-			OwnerName:   "rsslay",
+			OwnerName:   "rssnotes",
 		},
 	}
 
@@ -465,17 +464,17 @@ func handleExportOpml(w http.ResponseWriter, r *http.Request) {
 
 	for _, feed := range data {
 		rssOMPL.Body.Outlines = append(rssOMPL.Body.Outlines, opml.Outline{
-			Type:    "rss",
-			Text:    feed.PubKey,
-			Title:   feed.PrivateKey,
+			Type: "rss",
+			Text: feed.PubKey,
+			//Title:   feed.PrivateKey,
 			XMLURL:  feed.URL,
 			HTMLURL: feed.URL,
-			Created: strconv.FormatInt(feed.LastUpdate, 10),
+			//Created: strconv.FormatInt(feed.LastUpdate, 10),
 		})
 	}
 
 	w.Header().Add("content-type", "application/opml")
-	w.Header().Add("content-disposition", "attachment; filename="+time.Now().Format(time.DateOnly)+"-rsslay.opml")
+	w.Header().Add("content-disposition", "attachment; filename="+time.Now().Format(time.DateOnly)+"-rssnotes.opml")
 	outp, err := rssOMPL.XML()
 	if err != nil {
 		log.Print("[ERROR] exporting opml file")

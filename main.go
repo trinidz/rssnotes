@@ -100,7 +100,7 @@ func main() {
 		return
 	}
 
-	// basic properties returned on the NIP-11 endpoint
+	//returned on the NIP-11 endpoint
 	relay.Info.Name = s.RelayName
 	relay.Info.PubKey = s.RelayPubkey
 	relay.Info.Description = s.RelayDescription

@@ -31,31 +31,31 @@ cd rssnotes
 mkdir db
 mkdir qrcodes
 ```
-3. Create a file called `logfile.log`.
+3. Create four files: `docker-compose.yml`, `.env`, `seedrelays.json` and `logfile.log`.
+```bash
+touch docker-compose.yml
+touch .env
+touch seedrelays.json
+touch logfile.log
+```
 
-4. Create a file called `docker-compose.yml`.
+4. Copy and paste the contents from the [sample.docker-compose.yml](https://github.com/trinidz/rssnotes/blob/main/sample.docker-compose.yml) file into your `docker-compose.yml` file. Save and exit the file.
+ 
+5. Copy and paste the contents of the [sample.env](https://github.com/trinidz/rssnotes/blob/main/sample.env) file into your `.env` file.
 
-5. Copy and paste the contents from the [sample.docker-compose.yml](https://github.com/trinidz/rssnotes/blob/main/sample.docker-compose.yml) file into your `docker-compose.yml` file. Save and exit the file.
-
-6. Create a file called `.env`.  
-
-7. Copy and paste the contents of the [sample.env](https://github.com/trinidz/rssnotes/blob/main/sample.env) file into your `.env` file.
-
-8. Modify the contents of your `.env` file. Add values for the following REQUIRED environment variables. 
+6. Modify the contents of your `.env` file. Add values for the following REQUIRED environment variables. 
 - **RELAY_PRIVKEY** --- Use a nostr key generator to create a new set of nostr private and public keys for the relay. DO NOT USE your own existing nostr keys.  The relay will use these keys to follow all of your rss feeds and for other background tasks. 
 - **RELAY_PUBKEY** --- acquired from the new private key created above.
 - **RANDOM_SECRET** --- This is used to generate the nostr public/private keys for the rss feeds.  This should be a randomly generated string at least 20 characters long.
 - **RELAY_URL**  --- the URL of your relay ex.: myrssrelay.com.  This is only used for display on the relay's main page.  It does not affect your relays actual URL.
 
-9. The remaining variables in the `.env` file are optional. Save and exit the `.env` file.
+7. The remaining variables in the `.env` file are optional. Save and exit the `.env` file.
 
-10. Create a file called `seedrelays.json`. 
+8. Copy and paste the contents from the [sample.seedrelays.json](https://github.com/trinidz/rssnotes/blob/main/sample.seedrelays.json) file into your `seedrelays.json` file. Save and exit the file.
 
-11. Copy and paste the contents from the [sample.seedrelays.json](https://github.com/trinidz/rssnotes/blob/main/sample.seedrelays.json) file into your `seedrelays.json` file. Save and exit the file.
+9. Run `docker-compose up -d` while in the `rssnotes` directory. This will start the rssnotes container in the background. Go to http://localhost:3334 in your browser.
 
-12. Run `docker-compose up -d` while in the `rssnotes` directory. This will start the rssnotes container in the background. Go to http://localhost:3334 in your browser.
-
-## Run the relay as a service on your system
+## Run the relay as a service
 1. Clone the repo and cd into the repo folder.
 ```bash
 git clone https://github.com/trinidz/rssnotes
@@ -63,34 +63,33 @@ cd rssnotes
 ```
 2. Download the correct [rssnotes released binary](https://github.com/trinidz/rssnotes/releases) for your system into the rssnotes folder.
 
-3. Copy and rename the binary and other necessary files:
+3. Rename downloaded the binary:
 ```bash
-# The binary format is simillar to rssnotes-rx.x.x-ostype-arch. Change the cp command to match the specific binary you downloaded.
-cp rssnotes-rx.x.x-ostype-arch rssnotes
+# The binary format is simillar to rssnotes-rx.x.x-ostype-arch. Change the downloaded binary name to rssnotes.
+mv rssnotes-rx.x.x-ostype-arch rssnotes
 # Make sure the binary is executable
 chmod +x rssnotes
 ```
+4. Copy and rename the other necessary files:
 ```bash
 cp sample.env .env
-```
-```bash
 cp sample.seedrelays.json seedrelays.json
 ```
-4. Open the .env file and add values for the following REQUIRED environment variables. 
+5. Open the `.env` file and add values for the following REQUIRED environment variables. 
 - **RELAY_PRIVKEY** --- Use a nostr key generator to create a new set of nostr private and public keys for the relay. DO NOT USE your own existing nostr keys.  The relay will use these keys to follow all of your rss feeds and for other background tasks. 
 - **RELAY_PUBKEY** --- acquired from the new private key created above.
 - **RANDOM_SECRET** --- This is used to generate the nostr public/private keys for the rss feeds.  This should be a randomly generated string at least 20 characters long.
 - **RELAY_URL**  --- the URL of your relay ex.: myrssrelay.com.  This is only used for display on the relay's main page.  It does not affect your relays actual URL.
 
-5. The remaining variables in the .env file are optional.
+6. The remaining variables in the `.env` file are optional.
 
-6. Create a systemd service file:
+7. Create a systemd service file:
 
 ```bash
 sudo nano /etc/systemd/system/rssnotes.service
 ```
 
-7.  Add the following contents:
+8.  Add the following contents:
 
 ```ini
 [Unit]
@@ -108,24 +107,24 @@ MemoryLimit=2G
 [Install]
 WantedBy=multi-user.target
 ```
-8. Replace /home/myuser/ with the actual paths where the files are stored.
+9. Replace /home/myuser/ with the actual paths where the files are stored.
 
-9. Reload systemd to recognize the new service:
+10. Reload systemd to recognize the new service:
 
 ```bash
 sudo systemctl daemon-reload
 ```
 
-10. Start the service:
+11. Start the service:
 
 ```bash
 sudo systemctl start rssnotes
 ```
 
-11. Enable the service to start on boot:
+12. Enable the service to start on boot:
 
 ```bash
 sudo systemctl enable rssnotes
 ```
 
-12. Go to http://localhost:3334 in your browser.
+13. Go to http://localhost:3334 in your browser.
