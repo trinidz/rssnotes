@@ -139,11 +139,9 @@ func parseFeedForPubkey(pubKey string, deleteFailingFeeds bool) (*gofeed.Feed, E
 
 func createMetadataNote(pubkey string, privkey string, feed *gofeed.Feed, defaultProfilePictureUrl string) error {
 
-	if _, evt_meta, _ := getLocalMetadataEvent(pubkey); evt_meta.ID != "" {
-		if time.Now().Unix()-evt_meta.CreatedAt.Time().Unix() > int64(s.FeedMetadataRefreshDays*86400) {
-			log.Printf("[DEBUG] updating old metadata for event ID %s", evt_meta.ID)
-		} else {
-			log.Printf("[DEBUG] recent metadata exists at event ID %s created at: %v", evt_meta.ID, evt_meta.CreatedAt.Time().Unix())
+	if _, feedMetadata, _ := getLocalMetadataEvent(pubkey); feedMetadata.ID != "" {
+		if time.Now().Unix()-feedMetadata.CreatedAt.Time().Unix() < int64(s.FeedMetadataRefreshDays*86400) {
+			//log.Printf("[DEBUG] recent metadata exists at event ID %s created at: %v", feedMetadata.ID, feedMetadata.CreatedAt.Time().Unix())
 			return nil
 		}
 	}
@@ -197,7 +195,6 @@ func createMetadataNote(pubkey string, privkey string, feed *gofeed.Feed, defaul
 	}
 
 	log.Printf("[DEBUG] metadata note for %s created with ID %s with createdat %d", feed.Link, evt.ID, evt.CreatedAt.Time().Unix())
-
 	return nil
 }
 

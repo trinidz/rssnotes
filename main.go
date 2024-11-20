@@ -31,7 +31,7 @@ type Settings struct {
 	RelayIcon        string `envconfig:"RELAY_ICON" default:"https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/commafeed.png"`
 	RandomSecret     string `envconfig:"RANDOM_SECRET" required:"true"`
 	OwnerPubkey      string `envconfig:"OWNER_PUBKEY"`
-	Version          string `envconfig:"VERSION" default:"0.0.4"`
+	Version          string `envconfig:"VERSION" default:"0.0.7"`
 
 	LogLevel       string `envconfig:"LOG_LEVEL" default:"WARN"`
 	Port           string `envconfig:"PORT" default:"3334"`
@@ -53,12 +53,12 @@ type Settings struct {
 }
 
 var (
-	s Settings
-	//db = lmdb.LMDBBackend{}
+	s                    Settings
 	db                   = badger.BadgerBackend{}
 	relay                = khatru.NewRelay()
 	followManagmentCh    = make(chan FollowManagment)
 	importProgressCh     = make(chan ImportProgressStruct)
+	publishNostrEventCh  = make(chan nostr.Event)
 	pool                 *nostr.SimplePool
 	seedRelays           []string
 	tickerUpdateFeeds    *time.Ticker

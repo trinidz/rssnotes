@@ -158,22 +158,24 @@ func createFeed(r *http.Request, secret *string) *GUIEntry {
 		guientry.BookmarkEntity.ImageURL = parsedFeed.Image.URL
 	}
 
-	go func() {
-		if err := createMetadataNote(publicKey, sk, parsedFeed, s.DefaultProfilePicUrl); err != nil {
-			log.Printf("[ERROR] creating metadata note %s", err)
-		}
+	if err := createMetadataNote(publicKey, sk, parsedFeed, s.DefaultProfilePicUrl); err != nil {
+		log.Printf("[ERROR] creating metadata note %s", err)
+	}
 
-		latestCreatedAt := initFeed(publicKey, sk, feedUrl, parsedFeed)
+	if _, metadataEvent, _ := getLocalMetadataEvent(publicKey); metadataEvent.ID != "" {
+		publishNostrEventCh <- metadataEvent
+	}
 
-		if err := addEntityToBookmarkEvent([]Entity{
-			{PubKey: publicKey,
-				PrivateKey: sk,
-				URL:        feedUrl,
-				ImageURL:   guientry.BookmarkEntity.ImageURL,
-				LastUpdate: latestCreatedAt}}); err != nil {
-			log.Printf("[ERROR] feed entity %s not added to bookmark", feedUrl)
-		}
-	}()
+	latestCreatedAt := initFeed(publicKey, sk, feedUrl, parsedFeed)
+
+	if err := addEntityToBookmarkEvent([]Entity{
+		{PubKey: publicKey,
+			PrivateKey: sk,
+			URL:        feedUrl,
+			ImageURL:   guientry.BookmarkEntity.ImageURL,
+			LastUpdate: latestCreatedAt}}); err != nil {
+		log.Printf("[ERROR] feed entity %s not added to bookmark", feedUrl)
+	}
 
 	if err := qrcode.WriteFile(fmt.Sprintf("nostr:%s", guientry.NPubKey), qrcode.Low, 128, fmt.Sprintf("%s/%s.png", s.QRCodePath, guientry.NPubKey)); err != nil {
 		log.Print("[ERROR]", err)
@@ -367,8 +369,6 @@ func importFeeds(opmlUrls []opml.Outline, secret *string) []*GUIEntry {
 			Error:          false,
 			ErrorCode:      0,
 		}
-		importedEntries = append(importedEntries, &guiEntry)
-		importProgressCh <- ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
 
 		if err := qrcode.WriteFile(fmt.Sprintf("nostr:%s", guiEntry.NPubKey), qrcode.Low, 128, fmt.Sprintf("%s/%s.png", s.QRCodePath, guiEntry.NPubKey)); err != nil {
 			log.Print("[ERROR] ", err)
@@ -385,6 +385,9 @@ func importFeeds(opmlUrls []opml.Outline, secret *string) []*GUIEntry {
 
 		latestCreatedAt := initFeed(publicKey, sk, feedUrl, parsedFeed)
 		bookmarkEntities = append(bookmarkEntities, Entity{PubKey: publicKey, PrivateKey: sk, URL: feedUrl, ImageURL: localImageURL, LastUpdate: latestCreatedAt})
+
+		importedEntries = append(importedEntries, &guiEntry)
+		importProgressCh <- ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
 	}
 
 	if err := addEntityToBookmarkEvent(bookmarkEntities); err != nil {
@@ -578,12 +581,17 @@ func updateRssNotesState() {
 		select {
 		case followAction := <-followManagmentCh:
 			updateFollowListEvent(followAction)
+		case nostrEvent := <-publishNostrEventCh:
+			go func() {
+				blastEvent(&nostrEvent)
+			}()
 		case <-tickerUpdateFeeds.C:
 			updateAllFeeds()
 		case <-tickerDeleteOldNotes.C:
 			deleteOldEvents()
 		case <-quitChannel:
 			tickerUpdateFeeds.Stop()
+			tickerDeleteOldNotes.Stop()
 			return
 		}
 	}
