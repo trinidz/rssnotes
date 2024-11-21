@@ -16,7 +16,6 @@ import (
 
 const KIND_BOOKMARKS int = 10003 //NIP-51
 
-// gets notes from the local db
 func getLocalEvents(localFilter nostr.Filter) ([]*nostr.Event, error) {
 	ctx := context.TODO()
 
@@ -191,7 +190,7 @@ func deleteRemoteFollow(pubkeyHex string) nostr.Tags {
 	return nil
 }
 
-// TRUE if a rsslay feedUrl already exists in bookmark event
+// TRUE if feed exists in bookmark event
 func feedExists(pubkeyHex, privKeyHex, feedUrl string) (bool, error) {
 	var bookMarkTags nostr.Tags
 
@@ -220,7 +219,6 @@ func feedExists(pubkeyHex, privKeyHex, feedUrl string) (bool, error) {
 	return false, nil
 }
 
-// add a feed entity to the bookmark event
 func addEntityToBookmarkEvent(entitiesToAdd []Entity) error {
 	if len(entitiesToAdd) == 0 {
 		return nil
@@ -273,10 +271,10 @@ func addEntityToBookmarkEvent(entitiesToAdd []Entity) error {
 	return nil
 }
 
-// update an existing feed entity 'last' property in the bookmark event
-func updateEntityInBookmarkEvent(pubKeyHex string, lastUpdate int64) error {
+// update an existing feed entity time properties
+func updateEntityTimesInBookmarkEvent(updatedEntity Entity) error {
 	var bookMarkTags nostr.Tags
-	var rsslayEntity Entity
+	var rssnotesEntity Entity
 
 	var bookmarkFilter nostr.Filter = nostr.Filter{
 		Kinds:   []int{KIND_BOOKMARKS},
@@ -292,8 +290,8 @@ func updateEntityInBookmarkEvent(pubKeyHex string, lastUpdate int64) error {
 	if len(bookMarkEvts) > 0 {
 		bookMarkTags = bookMarkEvts[0].Tags.GetAll([]string{s.RsslayTagKey})
 		for i, tag := range bookMarkTags {
-			if strings.Contains(tag.Value(), pubKeyHex) {
-				if err := json.Unmarshal([]byte(tag.Value()), &rsslayEntity); err != nil {
+			if strings.Contains(tag.Value(), updatedEntity.PubKey) {
+				if err := json.Unmarshal([]byte(tag.Value()), &rssnotesEntity); err != nil {
 					log.Printf("[ERROR] %s", err)
 				}
 
@@ -301,9 +299,11 @@ func updateEntityInBookmarkEvent(pubKeyHex string, lastUpdate int64) error {
 				bookMarkTags[len(bookMarkTags)-1] = nostr.Tag{}
 				bookMarkTags = bookMarkTags[:len(bookMarkTags)-1]
 
-				rsslayEntity.LastUpdate = lastUpdate
+				rssnotesEntity.LastPostTime = updatedEntity.LastPostTime
+				rssnotesEntity.LastCheckedTime = updatedEntity.LastCheckedTime
+				rssnotesEntity.AvgPostTime = updatedEntity.AvgPostTime
 
-				jsonentArr, err := json.Marshal(rsslayEntity)
+				jsonentArr, err := json.Marshal(rssnotesEntity)
 				if err != nil {
 					log.Printf("[ERROR] %s", err)
 				}
@@ -313,7 +313,7 @@ func updateEntityInBookmarkEvent(pubKeyHex string, lastUpdate int64) error {
 				evt := nostr.Event{
 					CreatedAt: nostr.Now(),
 					Kind:      KIND_BOOKMARKS,
-					Content:   "{rsslay, pubkey, privkey, url, last_update}",
+					Content:   "",
 					Tags:      bookMarkTags,
 				}
 
@@ -326,7 +326,7 @@ func updateEntityInBookmarkEvent(pubKeyHex string, lastUpdate int64) error {
 					store(context.TODO(), &evt)
 				}
 
-				log.Printf("[DEBUG] entity %s last update %d in event ID %s", rsslayEntity.URL, rsslayEntity.LastUpdate, evt.ID)
+				log.Printf("[DEBUG] entity %s last post time %d in event ID %s", rssnotesEntity.URL, rssnotesEntity.LastPostTime, evt.ID)
 				break
 			}
 		}
@@ -337,7 +337,6 @@ func updateEntityInBookmarkEvent(pubKeyHex string, lastUpdate int64) error {
 	return nil
 }
 
-// delete a feed entity from a local bookmark event
 func deleteEntityInBookmarkEvent(pubKeyORfeedUrl string) error {
 	var bookMarkTags nostr.Tags
 	var rsslayEntity Entity
@@ -412,7 +411,6 @@ func deleteEntityInBookmarkEvent(pubKeyORfeedUrl string) error {
 	return nil
 }
 
-// return all saved FeedURL entries
 func getSavedEntries() ([]GUIEntry, error) {
 
 	var bookMarkTags nostr.Tags
@@ -441,10 +439,10 @@ func getSavedEntries() ([]GUIEntry, error) {
 			npub, _ := nip19.EncodePublicKey(rsslayEntity.PubKey)
 			localEntries = append(localEntries, GUIEntry{
 				BookmarkEntity: Entity{
-					PubKey:     rsslayEntity.PubKey,
-					URL:        rsslayEntity.URL,
-					ImageURL:   rsslayEntity.ImageURL,
-					LastUpdate: rsslayEntity.LastUpdate},
+					PubKey:       rsslayEntity.PubKey,
+					URL:          rsslayEntity.URL,
+					ImageURL:     rsslayEntity.ImageURL,
+					LastPostTime: rsslayEntity.LastPostTime},
 				NPubKey: npub,
 			})
 		}
@@ -454,7 +452,6 @@ func getSavedEntries() ([]GUIEntry, error) {
 	return localEntries, nil
 }
 
-// find the saved Entity with the given pubkey
 func getSavedEntity(pubkeyHex string) (Entity, error) {
 	var bookMarkTags nostr.Tags
 	var rsslayEntity Entity
@@ -487,7 +484,6 @@ func getSavedEntity(pubkeyHex string) (Entity, error) {
 	return Entity{}, nil
 }
 
-// return all feedURL Entities
 func getSavedEntities() ([]Entity, error) {
 	var bookMarkTags nostr.Tags
 	var rsslayEntity Entity
@@ -518,7 +514,6 @@ func getSavedEntities() ([]Entity, error) {
 	return entities, nil
 }
 
-// delete event from relay db
 func deleteLocalEvents(filter nostr.Filter) error {
 	ctx := context.TODO()
 

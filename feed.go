@@ -348,15 +348,21 @@ func GetConverterRules() []md.Rule {
 	}
 }
 
-func updateAllFeeds() {
-	var latestCreatedAt int64
-	//metrics.ListeningFiltersOps.Inc()
+func checkAllFeeds() {
 	currentEntities, err := getSavedEntities()
 	if err != nil {
 		log.Print("[ERROR] could not retrieve entities")
 		return
 	}
 	for _, currentEntity := range currentEntities {
+		if !TimetoUpdateFeed(currentEntity) {
+			//log.Printf("[DEBUG] not time to update %s. Time since last check: %d Avg post time: %d", currentEntity.URL, time.Now().Unix()-currentEntity.LastCheckedTime, currentEntity.AvgPostTime)
+			continue
+		}
+
+		lastPostTime := int64(0)
+		allPostTimes := make([]int64, 0)
+
 		parsedFeed, entity := parseFeedForPubkey(currentEntity.PubKey, s.DeleteFailingFeeds)
 		if parsedFeed == nil {
 			return
@@ -369,7 +375,7 @@ func updateAllFeeds() {
 		for _, item := range parsedFeed.Items {
 			defaultCreatedAt := time.Unix(time.Now().Unix(), 0)
 			evt := feedItemToNote(currentEntity.PubKey, item, parsedFeed, defaultCreatedAt, entity.URL, s.MaxContentLength)
-			if entity.LastUpdate < evt.CreatedAt.Time().Unix() {
+			if entity.LastPostTime < evt.CreatedAt.Time().Unix() {
 				if err := evt.Sign(entity.PrivateKey); err != nil {
 					log.Printf("[ERROR] %s", err)
 					return
@@ -381,25 +387,30 @@ func updateAllFeeds() {
 				for _, store := range relay.StoreEvent {
 					store(context.TODO(), &evt)
 				}
-			} else {
-				log.Printf("[DEBUG] event id %s created at %d older than last update %d", evt.ID, evt.CreatedAt.Time().Unix(), entity.LastUpdate)
 			}
-			if evt.CreatedAt.Time().Unix() > latestCreatedAt {
-				latestCreatedAt = evt.CreatedAt.Time().Unix()
+
+			if evt.CreatedAt.Time().Unix() > lastPostTime {
+				lastPostTime = evt.CreatedAt.Time().Unix()
 			}
+
+			allPostTimes = append(allPostTimes, evt.CreatedAt.Time().Unix())
 		}
 
-		if err := updateEntityInBookmarkEvent(entity.PubKey, latestCreatedAt); err != nil {
+		if err := updateEntityTimesInBookmarkEvent(Entity{
+			PubKey:          entity.PubKey,
+			LastPostTime:    lastPostTime,
+			LastCheckedTime: time.Now().Unix(),
+			AvgPostTime:     CalcAvgPostTime(allPostTimes),
+		}); err != nil {
 			log.Printf("[ERROR] feed entity %s not updated", entity.URL)
 		}
-
-		latestCreatedAt = 0
 	}
 }
 
-// init feed by creating kind 1's from rss feed
-func initFeed(pubkey string, privkey string, feedURL string, parsedFeed *gofeed.Feed) int64 {
-	var latestCreatedAt int64
+func initFeed(pubkey string, privkey string, feedURL string, parsedFeed *gofeed.Feed) (int64, []int64) {
+	var lastPostTime int64
+	postTimes := make([]int64, 0)
+
 	for _, item := range parsedFeed.Items {
 		defaultCreatedAt := time.Unix(time.Now().Unix(), 0)
 		evt := feedItemToNote(pubkey, item, parsedFeed, defaultCreatedAt, feedURL, s.MaxContentLength)
@@ -415,10 +426,12 @@ func initFeed(pubkey string, privkey string, feedURL string, parsedFeed *gofeed.
 			store(context.TODO(), &evt)
 		}
 
-		if evt.CreatedAt.Time().Unix() > latestCreatedAt {
-			latestCreatedAt = evt.CreatedAt.Time().Unix()
+		if evt.CreatedAt.Time().Unix() > lastPostTime {
+			lastPostTime = evt.CreatedAt.Time().Unix()
 		}
+
+		postTimes = append(postTimes, evt.CreatedAt.Time().Unix())
 	}
 
-	return latestCreatedAt
+	return lastPostTime, postTimes
 }

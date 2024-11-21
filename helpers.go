@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 )
@@ -81,4 +82,28 @@ func GetRelayListFromFile(filePath string) []string {
 		relayList[i] = "wss://" + strings.TrimSpace(relay)
 	}
 	return relayList
+}
+
+func CalcAvgPostTime(feedPostTimes []int64) int64 {
+	if len(feedPostTimes) < s.MinPostPeriodSamples {
+		return int64(s.MaxAvgPostPeriodHrs * 60 * 60)
+	}
+
+	sort.SliceStable(feedPostTimes, func(i, j int) bool {
+		return feedPostTimes[i] > feedPostTimes[j]
+	})
+
+	avgposttimesecs := (feedPostTimes[0] - feedPostTimes[len(feedPostTimes)-1]) / int64(len(feedPostTimes))
+
+	if avgposttimesecs < int64(s.MinAvgPostPeriodMins*60) {
+		return int64(s.MinAvgPostPeriodMins * 60)
+	} else if avgposttimesecs > int64(s.MaxAvgPostPeriodHrs*60*60) {
+		return int64(s.MaxAvgPostPeriodHrs * 60 * 60)
+	}
+
+	return avgposttimesecs
+}
+
+func TimetoUpdateFeed(rssfeed Entity) bool {
+	return time.Now().Unix()-rssfeed.LastCheckedTime >= rssfeed.AvgPostTime
 }

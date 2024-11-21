@@ -166,14 +166,16 @@ func createFeed(r *http.Request, secret *string) *GUIEntry {
 		publishNostrEventCh <- metadataEvent
 	}
 
-	latestCreatedAt := initFeed(publicKey, sk, feedUrl, parsedFeed)
+	lastPostTime, allPostTimes := initFeed(publicKey, sk, feedUrl, parsedFeed)
 
 	if err := addEntityToBookmarkEvent([]Entity{
 		{PubKey: publicKey,
-			PrivateKey: sk,
-			URL:        feedUrl,
-			ImageURL:   guientry.BookmarkEntity.ImageURL,
-			LastUpdate: latestCreatedAt}}); err != nil {
+			PrivateKey:      sk,
+			URL:             feedUrl,
+			ImageURL:        guientry.BookmarkEntity.ImageURL,
+			LastPostTime:    lastPostTime,
+			LastCheckedTime: time.Now().Unix(),
+			AvgPostTime:     CalcAvgPostTime(allPostTimes)}}); err != nil {
 		log.Printf("[ERROR] feed entity %s not added to bookmark", feedUrl)
 	}
 
@@ -383,8 +385,16 @@ func importFeeds(opmlUrls []opml.Outline, secret *string) []*GUIEntry {
 			localImageURL = parsedFeed.Image.URL
 		}
 
-		latestCreatedAt := initFeed(publicKey, sk, feedUrl, parsedFeed)
-		bookmarkEntities = append(bookmarkEntities, Entity{PubKey: publicKey, PrivateKey: sk, URL: feedUrl, ImageURL: localImageURL, LastUpdate: latestCreatedAt})
+		lastPostTime, allPostTimes := initFeed(publicKey, sk, feedUrl, parsedFeed)
+		bookmarkEntities = append(bookmarkEntities, Entity{
+			PubKey:          publicKey,
+			PrivateKey:      sk,
+			URL:             feedUrl,
+			ImageURL:        localImageURL,
+			LastPostTime:    lastPostTime,
+			LastCheckedTime: time.Now().Unix(),
+			AvgPostTime:     CalcAvgPostTime(allPostTimes),
+		})
 
 		importedEntries = append(importedEntries, &guiEntry)
 		importProgressCh <- ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
@@ -586,7 +596,7 @@ func updateRssNotesState() {
 				blastEvent(&nostrEvent)
 			}()
 		case <-tickerUpdateFeeds.C:
-			updateAllFeeds()
+			checkAllFeeds()
 		case <-tickerDeleteOldNotes.C:
 			deleteOldEvents()
 		case <-quitChannel:

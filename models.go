@@ -26,11 +26,13 @@ type ImportProgressStruct struct {
 }
 
 type Entity struct {
-	PubKey     string
-	PrivateKey string
-	URL        string
-	ImageURL   string
-	LastUpdate int64
+	PubKey          string
+	PrivateKey      string
+	URL             string
+	ImageURL        string
+	LastPostTime    int64
+	AvgPostTime     int64
+	LastCheckedTime int64
 }
 
 type GUIEntry struct {
