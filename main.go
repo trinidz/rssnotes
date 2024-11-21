@@ -129,7 +129,7 @@ func main() {
 
 	relay.RejectFilter = append(relay.RejectFilter,
 		policies.NoComplexFilters,
-		//policyFilterBookmark,
+		policyFilterBookmark,
 	)
 
 	npub, err := nip19.EncodePublicKey(s.RelayPubkey)
