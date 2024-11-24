@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"rssnotes/metrics"
 	"sort"
 	"strings"
 	"time"
@@ -266,12 +267,13 @@ func addEntityToBookmarkEvent(entitiesToAdd []Entity) error {
 	for _, store := range relay.StoreEvent {
 		store(context.TODO(), &evt)
 	}
+	metrics.KindBookmarkNotesCreated.Inc()
 
 	log.Printf("[DEBUG] bookmark event %s stored", evt.ID)
 	return nil
 }
 
-// update an existing feed entity time properties
+// update entity time properties
 func updateEntityTimesInBookmarkEvent(updatedEntity Entity) error {
 	var bookMarkTags nostr.Tags
 	var rssnotesEntity Entity
@@ -325,6 +327,7 @@ func updateEntityTimesInBookmarkEvent(updatedEntity Entity) error {
 				for _, store := range relay.StoreEvent {
 					store(context.TODO(), &evt)
 				}
+				metrics.KindBookmarkNotesCreated.Inc()
 
 				log.Printf("[DEBUG] entity %s last post time %d in event ID %s", rssnotesEntity.URL, rssnotesEntity.LastPostTime, evt.ID)
 				break
@@ -376,6 +379,7 @@ func deleteEntityInBookmarkEvent(pubKeyORfeedUrl string) error {
 				for _, store := range relay.StoreEvent {
 					store(context.TODO(), &evt)
 				}
+				metrics.KindBookmarkNotesCreated.Inc()
 
 				if err := json.Unmarshal([]byte(tag.Value()), &rsslayEntity); err != nil {
 					log.Printf("[ERROR] %s", err)
@@ -535,6 +539,16 @@ func deleteLocalEvents(filter nostr.Filter) error {
 	}
 
 	for _, evnt := range events {
+
+		switch evnt.Kind {
+		case nostr.KindTextNote:
+			metrics.KindTextNoteDeleted.Inc()
+		case nostr.KindProfileMetadata:
+			metrics.KindProfileMetadatasDeleted.Inc()
+		case KIND_BOOKMARKS:
+			metrics.KindBookmarkNotesDeleted.Inc()
+		}
+
 		for _, del := range relay.DeleteEvent {
 			if err := del(ctx, evnt); err != nil {
 				log.Printf("[ERROR] %s deleting event %s", evnt, err)
@@ -632,5 +646,6 @@ func blastEvent(ev *nostr.Event) {
 		relay.Publish(ctx, *ev)
 		cancel()
 	}
+	metrics.NotesBlasted.Inc()
 	log.Print("[INFO] 🔫 blasted event ID ", ev.ID, "to ", len(seedRelays), " relays")
 }

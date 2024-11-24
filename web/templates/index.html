@@ -38,6 +38,12 @@
     </div>
 </nav>
 
+<div class="content">
+    <form id="opml-import-form" hx-encoding="multipart/form-data" hx-post="/import" class="control" hx-trigger="change from:#opml-file" hx-target="#status-area" hx-swap="innerHTML">
+        <input type="file" id="opml-file" name="opml-file" accept=".xml,.opml" style="display:none;" >
+    </form>
+</div>
+
 <div class="hero is-dark" style="display: flex; align-items: center; justify-content: center">
   <nav class="level">
     
@@ -60,14 +66,40 @@
 </div>
 
 <div class="container is-fluid mt-4">
+
     <nav class="level">
         <div class="level-item has-text-centered">
             <div>
-                <p class="heading">Current feeds count</p>
+                <p class="heading">Current feeds</p>
                 <p class="title">{{.Count}}</p>
             </div>
         </div>
+        <div class="level-item has-text-centered">
+            <div>
+                <p class="heading">Notes created</p>
+                <p class="title">{{.KindTextNoteCreated}}</p>
+            </div>
+        </div>
+        <div class="level-item has-text-centered">
+            <div>
+                <p class="heading">Notes deleted</p>
+                <p class="title">{{.KindTextNoteDeleted}}</p>
+            </div>
+        </div>
+        <div class="level-item has-text-centered">
+            <div>
+                <p class="heading">Notes blasted</p>
+                <p class="title">{{.NotesBlasted}}</p>
+            </div>
+        </div>
+        <div class="level-item has-text-centered">
+            <div>
+                <p class="heading">Relay queries</p>
+                <p class="title">{{.QueryEventsRequests}}</p>
+            </div>
+        </div>
     </nav>
+
     <h2 class="subtitle">Getting Started:</h2>
     <div class="content">
         <ol>
@@ -77,10 +109,6 @@
             <li><strong>To follow an rss feed using your existing nostr profile. </strong>Follow the feed's public key from your Nostr client.</li>
             <li><strong>To follow all rss feeds using the relay's public key. </strong>Login to nostr using the relay's public key from your Nostr client.</li>
         </ol>
-    </div>
-   
-    <h2 class="subtitle has-text-centered">RSS is powerful! 🍰 Everything is RSSible</h2>
-    <div class="content">
         <ul>
             <li><b>For sites missing a feed (with support for <a
                     href="https://github.com/RSS-Bridge/rss-bridge/tree/master/bridges">several sites</a>), try using <a
@@ -93,13 +121,7 @@
             </li>
         </ul>
     </div>
-
-    <div class="content">
-        <form id="opml-import-form" hx-encoding="multipart/form-data" hx-post="/import" class="control" hx-trigger="change from:#opml-file" hx-target="#status-area" hx-swap="innerHTML">
-            <input type="file" id="opml-file" name="opml-file" accept=".xml,.opml" style="display:none;" >
-        </form>
-    </div>
-
+   
     <div class="content">
         <p>Create a nostr profile for a RSS feed:</p>
         <form action="/create" method="GET" class="control">
@@ -137,6 +159,7 @@
             </div>
         </form>
     </div>
+
     <h2 class="subtitle">Existing feeds:</h2>
     <table class="table">
         <tbody>

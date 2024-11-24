@@ -18,6 +18,7 @@ import (
 	"github.com/mmcdole/gofeed"
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/nbd-wtf/go-nostr/nip19"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/skip2/go-qrcode"
 )
 
@@ -165,6 +166,7 @@ func main() {
 	mux.HandleFunc("GET /export", handleExportOpml)
 	mux.HandleFunc("GET /delete", handleDeleteFeed)
 
+	mux.Handle("/metrics", promhttp.Handler())
 	mux.HandleFunc("GET /health", handleHealth)
 	mux.HandleFunc("GET /log", handleLog)
 
