@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"rssnotes/metrics"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -11,6 +13,7 @@ import (
 	"github.com/gilliek/go-opml/opml"
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/nbd-wtf/go-nostr/nip19"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/skip2/go-qrcode"
 
 	"encoding/json"
@@ -22,31 +25,40 @@ var (
 )
 
 func handleFrontpage(w http.ResponseWriter, _ *http.Request) {
-
+	metrics.IndexRequests.Inc()
 	items, err := getSavedEntries()
 	if err != nil {
 		log.Print("[ERROR] ", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+
 	npub, _ := nip19.EncodePublicKey(s.RelayPubkey)
 	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/index.html", s.TemplatePath)))
 
 	data := struct {
-		RelayName        string
-		RelayPubkey      string
-		RelayNPubkey     string
-		RelayDescription string
-		RelayURL         string
-		Count            int
-		Entries          []GUIEntry
+		RelayName           string
+		RelayPubkey         string
+		RelayNPubkey        string
+		RelayDescription    string
+		RelayURL            string
+		Count               int
+		Entries             []GUIEntry
+		KindTextNoteCreated string
+		KindTextNoteDeleted string
+		QueryEventsRequests string
+		NotesBlasted        string
 	}{
-		RelayName:        s.RelayName,
-		RelayPubkey:      s.RelayPubkey,
-		RelayNPubkey:     npub,
-		RelayDescription: s.RelayDescription,
-		RelayURL:         s.RelayURL,
-		Count:            len(items),
-		Entries:          items,
+		RelayName:           s.RelayName,
+		RelayPubkey:         s.RelayPubkey,
+		RelayNPubkey:        npub,
+		RelayDescription:    s.RelayDescription,
+		RelayURL:            s.RelayURL,
+		Count:               len(items),
+		Entries:             items,
+		KindTextNoteCreated: getPrometheusMetric(metrics.KindTextNoteCreated.Desc()),
+		KindTextNoteDeleted: getPrometheusMetric(metrics.KindTextNoteDeleted.Desc()),
+		QueryEventsRequests: getPrometheusMetric(metrics.QueryEventsRequests.Desc()),
+		NotesBlasted:        getPrometheusMetric(metrics.NotesBlasted.Desc()),
 	}
 
 	if err := tmpl.Execute(w, data); err != nil {
@@ -57,7 +69,7 @@ func handleFrontpage(w http.ResponseWriter, _ *http.Request) {
 
 func handleCreateFeed(w http.ResponseWriter, r *http.Request, secret *string) {
 	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/created.html", s.TemplatePath)))
-	//metrics.CreateRequests.Inc()
+	metrics.CreateRequests.Inc()
 	entry := createFeed(r, secret)
 
 	followAction := FollowManagment{
@@ -187,6 +199,7 @@ func createFeed(r *http.Request, secret *string) *GUIEntry {
 }
 
 func handleDeleteFeed(w http.ResponseWriter, r *http.Request) {
+	metrics.DeleteRequests.Inc()
 	feedPubkey := r.URL.Query().Get("pubkey")
 
 	followAction := FollowManagment{
@@ -209,21 +222,29 @@ func handleDeleteFeed(w http.ResponseWriter, r *http.Request) {
 	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/index.html", s.TemplatePath)))
 
 	data := struct {
-		RelayName        string
-		RelayPubkey      string
-		RelayNPubkey     string
-		RelayDescription string
-		RelayURL         string
-		Count            int
-		Entries          []GUIEntry
+		RelayName           string
+		RelayPubkey         string
+		RelayNPubkey        string
+		RelayDescription    string
+		RelayURL            string
+		Count               int
+		Entries             []GUIEntry
+		KindTextNoteCreated string
+		KindTextNoteDeleted string
+		QueryEventsRequests string
+		NotesBlasted        string
 	}{
-		RelayName:        s.RelayName,
-		RelayPubkey:      s.RelayPubkey,
-		RelayNPubkey:     npub,
-		RelayDescription: s.RelayDescription,
-		RelayURL:         s.RelayURL,
-		Count:            len(items),
-		Entries:          items,
+		RelayName:           s.RelayName,
+		RelayPubkey:         s.RelayPubkey,
+		RelayNPubkey:        npub,
+		RelayDescription:    s.RelayDescription,
+		RelayURL:            s.RelayURL,
+		Count:               len(items),
+		Entries:             items,
+		KindTextNoteCreated: getPrometheusMetric(metrics.KindTextNoteCreated.Desc()),
+		KindTextNoteDeleted: getPrometheusMetric(metrics.KindTextNoteDeleted.Desc()),
+		QueryEventsRequests: getPrometheusMetric(metrics.QueryEventsRequests.Desc()),
+		NotesBlasted:        getPrometheusMetric(metrics.NotesBlasted.Desc()),
 	}
 
 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
@@ -235,6 +256,7 @@ func handleDeleteFeed(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleImportOpml(w http.ResponseWriter, r *http.Request) {
+	metrics.ImportRequests.Inc()
 	outputFileStatus := func(errMsg string) {
 		htmlStr := fmt.Sprintf("<div id='progress' name='progress-bar' class='progress-bar' style='--width: 100' data-label='%s...'></div>", errMsg)
 		tmplProg, _ := template.New("t").Parse(htmlStr)
@@ -500,7 +522,7 @@ func handleExportOpml(w http.ResponseWriter, r *http.Request) {
 
 func handleSearch(w http.ResponseWriter, r *http.Request) {
 	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/search.html", s.TemplatePath)))
-	//metrics.SearchRequests.Inc()
+	metrics.SearchRequests.Inc()
 	query := r.URL.Query().Get("query")
 	if query == "" || len(query) <= 4 {
 
@@ -615,6 +637,48 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 		return
 	}
 	w.Header().Add("Content-Type", "application/json")
+	w.Header().Add("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(code)
 	w.Write(data)
+}
+
+func getPrometheusMetric(promParam *prometheus.Desc) string {
+	url := fmt.Sprintf("http://localhost:%s/metrics", s.Port)
+
+	resp, err := client.Get(url)
+	if err != nil {
+		log.Printf("[ERROR] %s", err)
+		return "?"
+	} else if resp.StatusCode >= 300 {
+		log.Printf("[ERROR] status code: %d", resp.StatusCode)
+		return "?"
+	}
+	defer resp.Body.Close()
+
+	respBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Print(err)
+		return "?"
+	}
+
+	respString := string(respBytes)
+	respLines := strings.Split(respString, "\n")
+	promMetricName := strings.Split(promParam.String(), "\"")[1]
+
+	for _, line := range respLines {
+		if strings.HasPrefix(line, promMetricName) {
+			//fmt.Println(line)
+			count := strings.Split(line, " ")[1]
+			countInt, err := strconv.Atoi(count)
+			if err != nil {
+				log.Print("[ERROR]", err)
+				return "?"
+			}
+			if countInt > 9999 {
+				return "+9999"
+			}
+			return count
+		}
+	}
+	return "?"
 }

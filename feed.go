@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"rssnotes/metrics"
 	"strings"
 	"time"
 
@@ -194,6 +195,7 @@ func createMetadataNote(pubkey string, privkey string, feed *gofeed.Feed, defaul
 		store(context.TODO(), &evt)
 	}
 
+	metrics.KindProfileMetadataCreated.Inc()
 	log.Printf("[DEBUG] metadata note for %s created with ID %s with createdat %d", feed.Link, evt.ID, evt.CreatedAt.Time().Unix())
 	return nil
 }
@@ -378,7 +380,7 @@ func checkAllFeeds() {
 			if entity.LastPostTime < evt.CreatedAt.Time().Unix() {
 				if err := evt.Sign(entity.PrivateKey); err != nil {
 					log.Printf("[ERROR] %s", err)
-					return
+					continue
 				}
 				log.Printf("[DEBUG] feed entity %s note created with ID %s", entity.URL, evt.ID)
 
@@ -387,6 +389,8 @@ func checkAllFeeds() {
 				for _, store := range relay.StoreEvent {
 					store(context.TODO(), &evt)
 				}
+
+				metrics.KindTextNoteCreated.Inc()
 			}
 
 			if evt.CreatedAt.Time().Unix() > lastPostTime {
@@ -425,6 +429,8 @@ func initFeed(pubkey string, privkey string, feedURL string, parsedFeed *gofeed.
 		for _, store := range relay.StoreEvent {
 			store(context.TODO(), &evt)
 		}
+
+		metrics.KindTextNoteCreated.Inc()
 
 		if evt.CreatedAt.Time().Unix() > lastPostTime {
 			lastPostTime = evt.CreatedAt.Time().Unix()
