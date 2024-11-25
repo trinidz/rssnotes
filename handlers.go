@@ -674,7 +674,7 @@ func getPrometheusMetric(promParam *prometheus.Desc) string {
 				log.Print("[ERROR]", err)
 				return "?"
 			}
-			if countInt > 9999 {
+			if countInt < 0 || countInt > 9999 {
 				return "+9999"
 			}
 			return count

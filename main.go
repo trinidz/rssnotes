@@ -32,7 +32,7 @@ type Settings struct {
 	RelayIcon        string `envconfig:"RELAY_ICON" default:"https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/commafeed.png"`
 	RandomSecret     string `envconfig:"RANDOM_SECRET" required:"true"`
 	OwnerPubkey      string `envconfig:"OWNER_PUBKEY"`
-	Version          string `envconfig:"VERSION" default:"0.0.8"`
+	Version          string `envconfig:"VERSION" default:"0.0.10"`
 
 	LogLevel       string `envconfig:"LOG_LEVEL" default:"WARN"`
 	Port           string `envconfig:"PORT" default:"3334"`

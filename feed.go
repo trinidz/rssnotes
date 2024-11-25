@@ -367,7 +367,7 @@ func checkAllFeeds() {
 
 		parsedFeed, entity := parseFeedForPubkey(currentEntity.PubKey, s.DeleteFailingFeeds)
 		if parsedFeed == nil {
-			return
+			continue
 		}
 
 		if err := createMetadataNote(currentEntity.PubKey, currentEntity.PrivateKey, parsedFeed, s.DefaultProfilePicUrl); err != nil {
