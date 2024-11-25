@@ -3,7 +3,7 @@ name: release go binary for all platforms
 on:
   push:
     tags:
-      - 'r*'
+      - 'r*','v*'
 
 permissions:
   contents: write
