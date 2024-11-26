@@ -9,7 +9,7 @@ rssnotes is a nostr relay that functions as an rss to nostr bridge by creating n
 - The rssnotes relay also has its own pubkey.  The rssnotes relay pubkey automatically follows all of the rss feed profiles. So if you login to nostr as the rssnotes relay you will see all of your RSS feeds.
 - Option to import and export multiple RSS feeds at once using an opml file.
 - Option to automatically delete old notes.
-- Selection of relay metrics dislayed on main page. (Metrics are per session and will reset if relay is restarted.)
+- Selection of relay metrics dislayed on main page. (Displayed metrics other than CURRENT FEEDS are per session and will reset if relay is restarted.)
 - Prometheus metrics available on /metrics path.
 - Search bar
 - Relay logs exposed on the /log path.

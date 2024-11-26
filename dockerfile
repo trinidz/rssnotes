@@ -9,14 +9,14 @@ COPY go.mod ./
 COPY go.sum ./
 RUN go mod download
 
+RUN touch logfile.log
+
 COPY . .
 
 # Build the go binary
 RUN go build -o rssnotes .
 
 # Stage 2: Create a image to run the Go application
-#FROM ubuntu:latest
-#FROM debian:bookworm-slim
 FROM alpine:latest
 
 ENV PORT=3334

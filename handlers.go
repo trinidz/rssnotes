@@ -669,15 +669,12 @@ func getPrometheusMetric(promParam *prometheus.Desc) string {
 		if strings.HasPrefix(line, promMetricName) {
 			//fmt.Println(line)
 			count := strings.Split(line, " ")[1]
-			countInt, err := strconv.Atoi(count)
+			countInt64, err := strconv.ParseInt(count, 10, 64)
 			if err != nil {
 				log.Print("[ERROR]", err)
 				return "?"
 			}
-			if countInt < 0 || countInt > 9999 {
-				return "+9999"
-			}
-			return count
+			return nearestThousandFormat(float64(countInt64))
 		}
 	}
 	return "?"

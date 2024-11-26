@@ -32,7 +32,7 @@ type Settings struct {
 	RelayIcon        string `envconfig:"RELAY_ICON" default:"https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/commafeed.png"`
 	RandomSecret     string `envconfig:"RANDOM_SECRET" required:"true"`
 	OwnerPubkey      string `envconfig:"OWNER_PUBKEY"`
-	Version          string `envconfig:"VERSION" default:"0.0.10"`
+	Version          string `envconfig:"VERSION" default:"0.0.11"`
 
 	LogLevel       string `envconfig:"LOG_LEVEL" default:"WARN"`
 	Port           string `envconfig:"PORT" default:"3334"`
@@ -165,8 +165,8 @@ func main() {
 	mux.HandleFunc("GET /detail", handleImportDetail)
 	mux.HandleFunc("GET /export", handleExportOpml)
 	mux.HandleFunc("GET /delete", handleDeleteFeed)
+	mux.Handle("GET /metrics", promhttp.Handler())
 
-	mux.Handle("/metrics", promhttp.Handler())
 	mux.HandleFunc("GET /health", handleHealth)
 	mux.HandleFunc("GET /log", handleLog)
 
