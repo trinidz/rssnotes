@@ -411,7 +411,6 @@ func deleteEntityInBookmarkEvent(pubKeyORfeedUrl string) error {
 	} else {
 		log.Printf("[DEBUG] bookmark event not found")
 	}
-
 	return nil
 }
 
@@ -560,7 +559,7 @@ func deleteLocalEvents(filter nostr.Filter) error {
 	return nil
 }
 
-func deleteOldEvents() {
+func deleteOldKindTextNoteEvents() {
 	if s.MaxNoteAgeDays < 1 {
 		log.Printf("[INFO] MaxAgeDays disabled")
 		return
@@ -577,6 +576,33 @@ func deleteOldEvents() {
 		Until: &oldAge,
 		Kinds: []int{
 			nostr.KindTextNote,
+		},
+	}
+
+	if err := deleteLocalEvents(filter); err != nil {
+		log.Printf("[ERROR] delete old notes: %s", err)
+		return
+	}
+}
+
+func deleteOldKBookmarkEvents() {
+	if s.MaxBookmarkAgeHrs < 1 {
+		log.Printf("[INFO] MaxBookmarkAgeHrs disabled")
+		return
+	}
+
+	maxAgeSecs := nostr.Timestamp(s.MaxBookmarkAgeHrs * 60 * 60)
+	oldAge := nostr.Now() - maxAgeSecs
+	if oldAge <= 0 {
+		log.Printf("[WARN] MaxBookmarkAgeHrs too large")
+		return
+	}
+
+	filter := nostr.Filter{
+		Until: &oldAge,
+		Limit: 10,
+		Kinds: []int{
+			KIND_BOOKMARKS,
 		},
 	}
 

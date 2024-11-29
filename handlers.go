@@ -620,7 +620,7 @@ func updateRssNotesState() {
 		case <-tickerUpdateFeeds.C:
 			checkAllFeeds()
 		case <-tickerDeleteOldNotes.C:
-			deleteOldEvents()
+			deleteOldKindTextNoteEvents()
 		case <-quitChannel:
 			tickerUpdateFeeds.Stop()
 			tickerDeleteOldNotes.Stop()

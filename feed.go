@@ -284,6 +284,7 @@ func getPrivateKeyFromFeedUrl(url string, secret string) string {
 }
 
 func checkAllFeeds() {
+	newBookmarkCreated := false
 	currentEntities, err := getSavedEntities()
 	if err != nil {
 		log.Print("[ERROR] could not retrieve entities")
@@ -340,7 +341,12 @@ func checkAllFeeds() {
 			AvgPostTime:     CalcAvgPostTime(allPostTimes),
 		}); err != nil {
 			log.Printf("[ERROR] feed entity %s not updated", entity.URL)
+		} else {
+			newBookmarkCreated = true
 		}
+	}
+	if newBookmarkCreated {
+		deleteOldKBookmarkEvents()
 	}
 }
 
