@@ -138,7 +138,7 @@ func parseFeedForPubkey(pubKey string, deleteFailingFeeds bool) (*gofeed.Feed, E
 	return parsedFeed, entity
 }
 
-func createMetadataNote(pubkey string, privkey string, feed *gofeed.Feed, defaultProfilePictureUrl string) error {
+func createMetadataNote(pubkey string, privkey string, feed *gofeed.Feed, profilePictureUrl string) error {
 
 	if _, feedMetadata, _ := getLocalMetadataEvent(pubkey); feedMetadata.ID != "" {
 		if time.Now().Unix()-feedMetadata.CreatedAt.Time().Unix() < int64(s.FeedMetadataRefreshDays*86400) {
@@ -161,10 +161,12 @@ func createMetadataNote(pubkey string, privkey string, feed *gofeed.Feed, defaul
 		"about": theDescription + "\n\n" + feed.Link,
 	}
 
-	if feed.Image != nil {
+	if profilePictureUrl != "" {
+		metadata["picture"] = profilePictureUrl
+	} else if feed.Image != nil {
 		metadata["picture"] = feed.Image.URL
-	} else if defaultProfilePictureUrl != "" {
-		metadata["picture"] = defaultProfilePictureUrl
+	} else {
+		metadata["picture"] = s.DefaultProfilePicUrl
 	}
 
 	content, err := json.Marshal(metadata)

@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"rssnotes/metrics"
+	"rssnotes/worker"
 	"strconv"
 	"strings"
 	"text/template"
@@ -166,17 +167,21 @@ func createFeed(r *http.Request, secret *string) *GUIEntry {
 	guientry.NPubKey, _ = nip19.EncodePublicKey(publicKey)
 
 	guientry.BookmarkEntity.ImageURL = s.DefaultProfilePicUrl
-	if parsedFeed.Image != nil && IconUrlExists(parsedFeed.Image.URL) {
-		guientry.BookmarkEntity.ImageURL = parsedFeed.Image.URL
+
+	faviconUrl, err := worker.FindFaviconURL(parsedFeed.Link, feedUrl)
+	if err != nil {
+		log.Print("[ERROR] FindFavicon", err)
+	} else if faviconUrl != "" {
+		guientry.BookmarkEntity.ImageURL = faviconUrl
 	}
 
-	if err := createMetadataNote(publicKey, sk, parsedFeed, s.DefaultProfilePicUrl); err != nil {
+	if err := createMetadataNote(publicKey, sk, parsedFeed, guientry.BookmarkEntity.ImageURL); err != nil {
 		log.Printf("[ERROR] creating metadata note %s", err)
 	}
 
-	if _, metadataEvent, _ := getLocalMetadataEvent(publicKey); metadataEvent.ID != "" {
-		publishNostrEventCh <- metadataEvent
-	}
+	// if _, metadataEvent, _ := getLocalMetadataEvent(publicKey); metadataEvent.ID != "" {
+	// 	publishNostrEventCh <- metadataEvent
+	// }
 
 	lastPostTime, allPostTimes := initFeed(publicKey, sk, feedUrl, parsedFeed)
 
@@ -398,13 +403,16 @@ func importFeeds(opmlUrls []opml.Outline, secret *string) []*GUIEntry {
 			log.Print("[ERROR] ", err)
 		}
 
-		if err := createMetadataNote(publicKey, sk, parsedFeed, s.DefaultProfilePicUrl); err != nil {
-			log.Printf("[ERROR] creating metadata note %s", err)
+		localImageURL := s.DefaultProfilePicUrl
+		faviconUrl, err := worker.FindFaviconURL(parsedFeed.Link, feedUrl)
+		if err != nil {
+			log.Print("[ERROR] FindFavicon", err)
+		} else if faviconUrl != "" {
+			localImageURL = faviconUrl
 		}
 
-		localImageURL := s.DefaultProfilePicUrl
-		if parsedFeed.Image != nil && IconUrlExists(parsedFeed.Image.URL) {
-			localImageURL = parsedFeed.Image.URL
+		if err := createMetadataNote(publicKey, sk, parsedFeed, localImageURL); err != nil {
+			log.Printf("[ERROR] creating metadata note %s", err)
 		}
 
 		lastPostTime, allPostTimes := initFeed(publicKey, sk, feedUrl, parsedFeed)
