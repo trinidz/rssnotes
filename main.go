@@ -32,7 +32,7 @@ type Settings struct {
 	RelayIcon        string `envconfig:"RELAY_ICON" default:"https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/commafeed.png"`
 	RandomSecret     string `envconfig:"RANDOM_SECRET" required:"true"`
 	OwnerPubkey      string `envconfig:"OWNER_PUBKEY"`
-	Version          string `envconfig:"VERSION" default:"0.0.11"`
+	Version          string `envconfig:"VERSION" default:"0.0.12"`
 
 	LogLevel       string `envconfig:"LOG_LEVEL" default:"WARN"`
 	Port           string `envconfig:"PORT" default:"3334"`
@@ -51,6 +51,7 @@ type Settings struct {
 	FeedItemsRefreshMinutes int    `envconfig:"FEED_ITEMS_REFRESH_MINUTES" default:"30"`
 	FeedMetadataRefreshDays int    `envconfig:"METADATA_REFRESH_DAYS" default:"7"`
 	MaxNoteAgeDays          int    `envconfig:"MAX_NOTE_AGE_DAYS" default:"0"`
+	MaxBookmarkAgeHrs       int    `envconfig:"MAX_BOOKMARK_AGE_HRS" default:"1"`
 	MaxAvgPostPeriodHrs     int64  `envconfig:"MAX_AVG_POST_PERIOD_HRS" default:"4"`
 	MinAvgPostPeriodMins    int64  `envconfig:"MIN_AVG_POST_PERIOD_MINS" default:"10"`
 	MinPostPeriodSamples    int    `envconfig:"MIN_POST_PERIOD_SAMPLES" default:"5"`
@@ -154,7 +155,7 @@ func main() {
 	go updateRssNotesState()
 
 	mux := relay.Router()
-	mux.HandleFunc("/", handleFrontpage)
+	mux.HandleFunc("/{$}", handleFrontpage)
 	mux.Handle("GET /assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir(s.StaticPath))))
 	mux.HandleFunc("GET /create", (func(w http.ResponseWriter, r *http.Request) {
 		handleCreateFeed(w, r, &s.RandomSecret)

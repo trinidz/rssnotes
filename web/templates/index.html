@@ -38,15 +38,8 @@
     </div>
 </nav>
 
-<div class="content">
-    <form id="opml-import-form" hx-encoding="multipart/form-data" hx-post="/import" class="control" hx-trigger="change from:#opml-file" hx-target="#status-area" hx-swap="innerHTML">
-        <input type="file" id="opml-file" name="opml-file" accept=".xml,.opml" style="display:none;" >
-    </form>
-</div>
-
 <div class="hero is-dark" style="display: flex; align-items: center; justify-content: center">
-  <nav class="level">
-    
+    <nav class="level">  
     <div class="hero-body level-item has-text-centered">
         <div>
           <p class="title" style="padding-top: 10px; padding-bottom: 10px;"><a href="/">{{.RelayName}}</a></p>
@@ -65,8 +58,13 @@
   </nav>
 </div>
 
-<div class="container is-fluid mt-4">
+<div class="content">
+    <form id="opml-import-form" hx-encoding="multipart/form-data" hx-post="/import" class="control" hx-trigger="change from:#opml-file" hx-target="#status-area" hx-swap="innerHTML">
+        <input type="file" id="opml-file" name="opml-file" accept=".xml,.opml" style="display:none;" >
+    </form>
+</div>
 
+<div class="container is-fluid mt-4">
     <nav class="level">
         <div class="level-item has-text-centered">
             <div>
@@ -172,7 +170,7 @@
         </tr>
         {{range .Entries}}
         <tr>
-            <td><img src="{{.BookmarkEntity.ImageURL}}" alt="feed icon" width="128" height="128"></td> 
+            <td><img src="{{.BookmarkEntity.ImageURL}}" alt="feed icon" width="64" height="64"></td> 
             <td><a href="{{.BookmarkEntity.URL}}" style="word-break: break-all;">{{.BookmarkEntity.URL}}</a></td>
             <td>
                 <a href="https://njump.me/{{.NPubKey}}" style="word-break: break-all;">{{.NPubKey}}</a>
