@@ -154,7 +154,7 @@ func createFeed(r *http.Request, secret *string) *GUIEntry {
 	}
 
 	parsedFeed, err := parseFeedForUrl(feedUrl)
-	if err != nil {
+	if err != nil || parsedFeed == nil {
 		guientry.ErrorCode = http.StatusBadRequest
 		guientry.Error = true
 		guientry.ErrorMessage = "Can not parse feed: " + err.Error()
@@ -165,7 +165,6 @@ func createFeed(r *http.Request, secret *string) *GUIEntry {
 	guientry.BookmarkEntity.URL = feedUrl
 	guientry.BookmarkEntity.PubKey = publicKey
 	guientry.NPubKey, _ = nip19.EncodePublicKey(publicKey)
-
 	guientry.BookmarkEntity.ImageURL = s.DefaultProfilePicUrl
 
 	faviconUrl, err := worker.FindFaviconURL(parsedFeed.Link, feedUrl)

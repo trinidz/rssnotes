@@ -11,6 +11,8 @@ type Client struct {
 	userAgent  string
 }
 
+var client *Client
+
 func (c *Client) get(url string) (*http.Response, error) {
 	return c.getConditional(url, "", "")
 }
@@ -20,20 +22,19 @@ func (c *Client) getConditional(url, lastModified, etag string) (*http.Response,
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", c.userAgent)
+	req.Header.Set("User-Agent", "rssnotes/0.0.12")
 	if lastModified != "" {
 		req.Header.Set("If-Modified-Since", lastModified)
 	}
 	if etag != "" {
 		req.Header.Set("If-None-Match", etag)
 	}
+
 	return c.httpClient.Do(req)
 }
 
-var client *Client
-
-func SetVersion(num string) {
-	client.userAgent = "Rssnotes/" + num
+func SetVersion(agent, num string) {
+	client.userAgent = agent + "/" + num
 }
 
 func init() {

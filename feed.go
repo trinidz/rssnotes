@@ -90,6 +90,9 @@ func parseFeedForUrl(url string) (*gofeed.Feed, error) {
 	if err != nil {
 		log.Print("[ERROR] ", err)
 		return nil, err
+	} else if feed == nil {
+		log.Print("[DEBUG] no parse feed returned.")
+		return nil, nil
 	}
 
 	// cleanup
