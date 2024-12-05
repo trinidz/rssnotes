@@ -31,9 +31,7 @@
             <a href="/export" class="navbar-item">Export</a>
         </div>
         <div class="navbar-end">
-            
             <div class="navbar-item" id="status-area" hx-get="/progress" hx-target="this" hx-swap="outerHTML" hx-trigger="change from:#opml-import-form" hx-sync="#opml-file: queue first"></div>
-         
         </div>
     </div>
 </nav>
@@ -60,43 +58,48 @@
 
 <div class="content">
     <form id="opml-import-form" hx-encoding="multipart/form-data" hx-post="/import" class="control" hx-trigger="change from:#opml-file" hx-target="#status-area" hx-swap="innerHTML">
-        <input type="file" id="opml-file" name="opml-file" accept=".xml,.opml" style="display:none;" >
+        <input type="file" id="opml-file" name="opml-file" accept=".xml,.opml" style="display:none;">
     </form>
 </div>
 
 <div class="container is-fluid mt-4">
-    <nav class="level">
-        <div class="level-item has-text-centered">
-            <div>
-                <p class="heading">Current feeds</p>
-                <p class="title">{{.Count}}</p>
-            </div>
+
+
+<nav id="metrics-display" class="level" hx-get="/metricsDisplay" hx-trigger="click from:#btn-delete delay:3000ms,click from:#btn-create delay:3000ms">
+    {{ block "metrics-display-fragment" .}}
+    <div class="level-item has-text-centered">
+        <div>
+            <p class="heading">Current feeds</p>
+            <p class="title">{{.Count}}</p>
         </div>
-        <div class="level-item has-text-centered">
-            <div>
-                <p class="heading">Notes created</p>
-                <p class="title">{{.KindTextNoteCreated}}</p>
-            </div>
+    </div>
+    <div class="level-item has-text-centered">
+        <div>
+            <p class="heading">Notes created</p>
+            <p class="title">{{.KindTextNoteCreated}}</p>
         </div>
-        <div class="level-item has-text-centered">
-            <div>
-                <p class="heading">Notes deleted</p>
-                <p class="title">{{.KindTextNoteDeleted}}</p>
-            </div>
+    </div>
+    <div class="level-item has-text-centered">
+        <div>
+            <p class="heading">Notes deleted</p>
+            <p class="title">{{.KindTextNoteDeleted}}</p>
         </div>
-        <div class="level-item has-text-centered">
-            <div>
-                <p class="heading">Notes blasted</p>
-                <p class="title">{{.NotesBlasted}}</p>
-            </div>
+    </div>
+    <div class="level-item has-text-centered">
+        <div>
+            <p class="heading">Notes blasted</p>
+            <p class="title">{{.NotesBlasted}}</p>
         </div>
-        <div class="level-item has-text-centered">
-            <div>
-                <p class="heading">Relay queries</p>
-                <p class="title">{{.QueryEventsRequests}}</p>
-            </div>
+    </div>
+    <div class="level-item has-text-centered">
+        <div>
+            <p class="heading">Relay queries</p>
+            <p class="title">{{.QueryEventsRequests}}</p>
         </div>
-    </nav>
+    </div>
+    {{end}}
+</nav>
+
 
     <h2 class="subtitle">Getting Started:</h2>
     <div class="content">
@@ -129,7 +132,7 @@
                            placeholder="https://example.com/feed">
                 </div>
                 <div class="control">
-                    <button class="button is-link">
+                    <button class="button is-link" id="btn-create">
                         <span class="icon">
                           <i class="fas fa-key"></i>
                         </span>
@@ -160,14 +163,16 @@
 
     <h2 class="subtitle">Existing feeds:</h2>
     <table class="table">
-        <tbody>
-        <tr>
+        <thead>
+          <tr>
             <th>Icon</th>
             <th>Feed URL</th>
             <th>Public keys (npub / hex)</th>
             <th>Subscribe</th>
             <th>Manage</th>
-        </tr>
+          </tr>
+        </thead>
+        <tbody hx-confirm="Are you sure?" hx-target="closest tr" hx-swap="outerHTML">
         {{range .Entries}}
         <tr>
             <td><img src="{{.BookmarkEntity.ImageURL}}" alt="feed icon" width="64" height="64"></td> 
@@ -179,9 +184,9 @@
             </td>
             <td><img src="/assets/qrcodes/{{.NPubKey}}.png" alt="npub qrcode" width="128" height="128"></td>
             <td>
-                <div class="buttons">
-                    <a href="/delete?pubkey={{.BookmarkEntity.PubKey}}" target="_self" class="button is-small is-link is-light">Delete</a>
-                </div>
+                <button class="button is-small is-link is-light" id="btn-delete" hx-delete="/delete?pubkey={{.BookmarkEntity.PubKey}}">
+                    Delete
+                </button>
             </td>
         </tr>
         {{end}}

@@ -165,8 +165,10 @@ func main() {
 	mux.HandleFunc("GET /progress", handleImportProgress)
 	mux.HandleFunc("GET /detail", handleImportDetail)
 	mux.HandleFunc("GET /export", handleExportOpml)
-	mux.HandleFunc("GET /delete", handleDeleteFeed)
+	mux.HandleFunc(" /delete", handleDeleteFeed)
 	mux.Handle("GET /metrics", promhttp.Handler())
+
+	mux.HandleFunc(" /metricsDisplay", handleMetricsDisplay)
 
 	mux.HandleFunc("GET /health", handleHealth)
 	mux.HandleFunc("GET /log", handleLog)
