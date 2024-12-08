@@ -1,4 +1,5 @@
-<html lang="en"></html>
+<html lang="en">
+</html>
 
 <head>
     <meta charset="utf-8">
@@ -7,196 +8,220 @@
     <script src="/assets/js/htmx.min.js"></script>
     <link rel="stylesheet" href="/assets/css/styles.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
-    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css" integrity="sha384-DyZ88mC6Up2uqS4h/KRgHuoeGwBcD4Ng9SiP4dIRy0EXTlnuz47vAwmeGwVChigm" crossorigin="anonymous"/>
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css"
+        integrity="sha384-DyZ88mC6Up2uqS4h/KRgHuoeGwBcD4Ng9SiP4dIRy0EXTlnuz47vAwmeGwVChigm" crossorigin="anonymous" />
     <title>{{.RelayName}}</title>
 </head>
 
 <body>
-<nav class="navbar is-light" role="navigation" aria-label="main navigation">
-    <div class="navbar-brand">
-        <a href="/" class="navbar-item">
-            <img src="/assets/static/rssnotes-logo.png" alt="{{.RelayName}}: comvert RSS or Atom feeds into Nostr profiles" width="112" height="28">
-        </a>
-        <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navMenu">
-            <span aria-hidden="true"></span>
-            <span aria-hidden="true"></span>
-            <span aria-hidden="true"></span>
-        </a>
-    </div>
-    <div id="navMenu" class="navbar-menu">
-        <div class="navbar-start">
-            <a href="/" class="navbar-item">Home</a>
-            <a href="https://github.com/trinidz/rssnotes" class="navbar-item">Documentation</a>
-            <a href="javascript:document.getElementById('opml-file').click()" class="navbar-item">Import</a>
-            <a href="/export" class="navbar-item">Export</a>
+    
+    <nav class="navbar is-light" role="navigation" aria-label="main navigation">
+        <div class="navbar-brand">
+            <a href="/" class="navbar-item">
+                <img src="/assets/static/rssnotes-logo.png"
+                    alt="{{.RelayName}}: comvert RSS or Atom feeds into Nostr profiles" width="112" height="28">
+            </a>
+            <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navMenu">
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+            </a>
         </div>
-        <div class="navbar-end">
-            
-            <div class="navbar-item" id="status-area" hx-get="/progress" hx-target="this" hx-swap="outerHTML" hx-trigger="change from:#opml-import-form" hx-sync="#opml-file: queue first"></div>
-         
-        </div>
-    </div>
-</nav>
-
-<div class="hero is-dark" style="display: flex; align-items: center; justify-content: center">
-    <nav class="level">  
-    <div class="hero-body level-item has-text-centered">
-        <div>
-          <p class="title" style="padding-top: 10px; padding-bottom: 10px;"><a href="/">{{.RelayName}}</a></p>
-          <p class="subtitle" style="padding-top: 10px; padding-bottom: 10px;">convert RSS or Atom feeds into <a
-                href="https://github.com/nostr-protocol/nostr">Nostr</a> profiles.</p>
-        </div>
-    </div>
-
-    <div class="level-item has-text-centered">
-        <div>
-          <p class="heading" style="padding-top: 10px;">Relay Pubkey</p>
-          <img src="/assets/qrcodes/{{.RelayNPubkey}}.png" alt="npub qrcode" width="128" height="128" style="padding-top: 5px; padding-bottom: 5px;">
-          <p class="heading">{{.RelayNPubkey}}</p>
-        </div>
-    </div>
-  </nav>
-</div>
-
-<div class="content">
-    <form id="opml-import-form" hx-encoding="multipart/form-data" hx-post="/import" class="control" hx-trigger="change from:#opml-file" hx-target="#status-area" hx-swap="innerHTML">
-        <input type="file" id="opml-file" name="opml-file" accept=".xml,.opml" style="display:none;" >
-    </form>
-</div>
-
-<div class="container is-fluid mt-4">
-    <nav class="level">
-        <div class="level-item has-text-centered">
-            <div>
-                <p class="heading">Current feeds</p>
-                <p class="title">{{.Count}}</p>
+        <div id="navMenu" class="navbar-menu">
+            <div class="navbar-start">
+                <a href="/" class="navbar-item">Home</a>
+                <a href="https://github.com/trinidz/rssnotes" class="navbar-item">Documentation</a>
+                <a href="javascript:document.getElementById('opml-file').click()" class="navbar-item">Import</a>
+                <a href="/export" class="navbar-item">Export</a>
             </div>
-        </div>
-        <div class="level-item has-text-centered">
-            <div>
-                <p class="heading">Notes created</p>
-                <p class="title">{{.KindTextNoteCreated}}</p>
-            </div>
-        </div>
-        <div class="level-item has-text-centered">
-            <div>
-                <p class="heading">Notes deleted</p>
-                <p class="title">{{.KindTextNoteDeleted}}</p>
-            </div>
-        </div>
-        <div class="level-item has-text-centered">
-            <div>
-                <p class="heading">Notes blasted</p>
-                <p class="title">{{.NotesBlasted}}</p>
-            </div>
-        </div>
-        <div class="level-item has-text-centered">
-            <div>
-                <p class="heading">Relay queries</p>
-                <p class="title">{{.QueryEventsRequests}}</p>
+            <div class="navbar-end">
+                <div class="navbar-item" id="status-area" hx-get="/progress" hx-target="this" hx-swap="outerHTML"
+                    hx-trigger="change from:#opml-import-form" hx-sync="#opml-file: queue first"></div>
             </div>
         </div>
     </nav>
 
-    <h2 class="subtitle">Getting Started:</h2>
-    <div class="content">
-        <ol>
-            <li>Add the URL of an RSS or Atom feed below in the <strong>Get Public Key</strong> box and click the button to get its corresponding nostr public key. 
-            <li>If you have an opml file, import RSS feeds using the <strong>Import</strong> link at the top of the page.</li>
-            <li>Add your rssnotes relay to your Nostr client: <strong><code>wss://{{.RelayURL}}</code></strong></li>
-            <li><strong>To follow an rss feed using your existing nostr profile. </strong>Follow the feed's public key from your Nostr client.</li>
-            <li><strong>To follow all rss feeds using the relay's public key. </strong>Login to nostr using the relay's public key from your Nostr client.</li>
-        </ol>
-        <ul>
-            <li><b>For sites missing a feed (with support for <a
-                    href="https://github.com/RSS-Bridge/rss-bridge/tree/master/bridges">several sites</a>), try using <a
-                    href="https://rss-bridge.github.io/rss-bridge/">RSS-Bridge.</a></b>
-            </li>
-            <li><b><a href="https://rsshub.app/">RssHub</a> is capable of generating RSS feeds from pretty much
-                everything too</b>, check it how to use it in <a
-                    href="https://docs.rsshub.app/">https://docs.rsshub.app</a> (ex. <a
-                    href="https://rsshub.app/github/topics/nostr">repos inside nostr topic in GitHub</a>)
-            </li>
-        </ul>
-    </div>
-   
-    <div class="content">
-        <p>Create a nostr profile for a RSS feed:</p>
-        <form action="/create" method="GET" class="control">
-            <div class="field has-addons">
-                <div class="control is-expanded">
-                    <input class="input is-link is-normal" name="url" type="url"
-                           placeholder="https://example.com/feed">
-                </div>
-                <div class="control">
-                    <button class="button is-link">
-                        <span class="icon">
-                          <i class="fas fa-key"></i>
-                        </span>
-                        <span>Get Public Key</span>
-                    </button>
+    <div class="hero is-dark" style="display: flex; align-items: center; justify-content: center">
+        <nav class="level">
+            <div class="hero-body level-item has-text-centered">
+                <div>
+                    <p class="title" style="padding-top: 10px; padding-bottom: 10px;"><a href="/">{{.RelayName}}</a></p>
+                    <p class="subtitle" style="padding-top: 10px; padding-bottom: 10px;">convert RSS or Atom feeds into
+                        <a href="https://github.com/nostr-protocol/nostr">Nostr</a> profiles.</p>
                 </div>
             </div>
-        </form>
-    </div>
-    <div class="content">
-        <form action="/search" method="GET" class="control">
-            <p>Search feeds by URL (min. 5 characters):</p>
-            <div class="field has-addons">
-                <div class="control is-expanded">
-                    <input class="input is-link is-normal" name="query" type="text" placeholder="bitcoin">
-                </div>
-                <div class="control">
-                    <button class="button is-info">
-                        <span class="icon">
-                          <i class="fas fa-filter"></i>
-                        </span>
-                        <span>Search</span>
-                    </button>
+
+            <div class="level-item has-text-centered">
+                <div>
+                    <p class="heading" style="padding-top: 10px;">Relay Pubkey</p>
+                    <img src="/assets/qrcodes/{{.RelayNPubkey}}.png" alt="npub qrcode" width="128" height="128"
+                        style="padding-top: 5px; padding-bottom: 5px;">
+                    <p class="heading">{{.RelayNPubkey}}</p>
                 </div>
             </div>
+        </nav>
+    </div>
+
+    <div class="content">
+        <form id="opml-import-form" hx-encoding="multipart/form-data" hx-post="/import" class="control"
+            hx-trigger="change from:#opml-file" hx-target="#status-area" hx-swap="innerHTML">
+            <input type="file" id="opml-file" name="opml-file" accept=".xml,.opml" style="display:none;">
         </form>
     </div>
 
-    <h2 class="subtitle">Existing feeds:</h2>
-    <table class="table">
-        <tbody>
-        <tr>
-            <th>Icon</th>
-            <th>Feed URL</th>
-            <th>Public keys (npub / hex)</th>
-            <th>Subscribe</th>
-            <th>Manage</th>
-        </tr>
-        {{range .Entries}}
-        <tr>
-            <td><img src="{{.BookmarkEntity.ImageURL}}" alt="feed icon" width="64" height="64"></td> 
-            <td><a href="{{.BookmarkEntity.URL}}" style="word-break: break-all;">{{.BookmarkEntity.URL}}</a></td>
-            <td>
-                <a href="https://njump.me/{{.NPubKey}}" style="word-break: break-all;">{{.NPubKey}}</a>
-                <p>---</p>
-                <a href="https://njump.me/{{.NPubKey}}" style="word-break: break-all;">{{.BookmarkEntity.PubKey}}</a>     
-            </td>
-            <td><img src="/assets/qrcodes/{{.NPubKey}}.png" alt="npub qrcode" width="128" height="128"></td>
-            <td>
-                <div class="buttons">
-                    <a href="/delete?pubkey={{.BookmarkEntity.PubKey}}" target="_self" class="button is-small is-link is-light">Delete</a>
+    <div class="container is-fluid mt-4">
+
+        <nav id="metrics-display" class="level" hx-get="/metricsDisplay"
+            hx-trigger="click from:#btn-delete delay:3000ms, every 600s">
+            {{ block "metrics-display-fragment" .}}
+            <div class="level-item has-text-centered">
+                <div>
+                    <p class="heading">Current feeds</p>
+                    <p class="title">{{.Count}}</p>
                 </div>
-            </td>
-        </tr>
-        {{end}}
-        </tbody>
-    </table>
-    </p>
-</div>
-<footer class="footer">
-    <div class="content has-text-centered">
-        <p>
-            <a href="https://github.com/trinidz/rssnotes"><strong>rssnotes</strong></a> original work by <a href="https://fiatjaf.com">fiatjaf</a> and <a href="https://piraces.dev">piraces</a> modifications by <a
-                href="https://njump.me/npub15ucds95a8m2whgj4esll39lhxta5jwk8lqvmtz6ne8lf8ksmggrqz74dq7">trinidz</a>. The source code is
-            <a href="https://unlicense.org/">UNlicensed</a>. Keep the good vibes 🤙
+            </div>
+            <div class="level-item has-text-centered">
+                <div>
+                    <p class="heading">Notes created</p>
+                    <p class="title">{{.KindTextNoteCreated}}</p>
+                </div>
+            </div>
+            <div class="level-item has-text-centered">
+                <div>
+                    <p class="heading">Notes deleted</p>
+                    <p class="title">{{.KindTextNoteDeleted}}</p>
+                </div>
+            </div>
+            <div class="level-item has-text-centered">
+                <div>
+                    <p class="heading">Notes blasted</p>
+                    <p class="title">{{.NotesBlasted}}</p>
+                </div>
+            </div>
+            <div class="level-item has-text-centered">
+                <div>
+                    <p class="heading">Relay queries</p>
+                    <p class="title">{{.QueryEventsRequests}}</p>
+                </div>
+            </div>
+            {{end}}
+        </nav>
+
+        <h2 class="subtitle">Getting Started:</h2>
+        <div class="content">
+            <ol>
+                <li>Add the URL of an RSS or Atom feed below in the <strong>Get Public Key</strong> box and click the
+                    button to get its corresponding nostr public key.
+                <li>If you have an opml file, import RSS feeds using the <strong>Import</strong> link at the top of the
+                    page.</li>
+                <li>Add your rssnotes relay to your Nostr client: <strong><code>wss://{{.RelayURL}}</code></strong></li>
+                <li><strong>To follow an rss feed using your existing nostr profile. </strong>Follow the feed's public
+                    key from your Nostr client.</li>
+                <li><strong>To follow all rss feeds using the relay's public key. </strong>Login to nostr using the
+                    relay's public key from your Nostr client.</li>
+            </ol>
+            <ul>
+                <li><b>For sites missing a feed (with support for <a
+                            href="https://github.com/RSS-Bridge/rss-bridge/tree/master/bridges">several sites</a>), try
+                        using <a href="https://rss-bridge.github.io/rss-bridge/">RSS-Bridge.</a></b>
+                </li>
+                <li><b><a href="https://rsshub.app/">RssHub</a> is capable of generating RSS feeds from pretty much
+                        everything too</b>, check it how to use it in <a
+                        href="https://docs.rsshub.app/">https://docs.rsshub.app</a> (ex. <a
+                        href="https://rsshub.app/github/topics/nostr">repos inside nostr topic in GitHub</a>)
+                </li>
+            </ul>
+        </div>
+       
+        <div class="content">
+            <p>Create a nostr profile for a RSS feed:</p>
+            <form action="/create" method="GET" class="control">
+                <div class="field has-addons">
+                    <div class="control is-expanded">
+                        <input class="input is-link is-normal" id="create-profile-url" name="url" type="url"
+                            placeholder="https://example.com/feed">
+                    </div>
+                    <div class="control">
+                        <button class="button is-link" id="btn-create">
+                            <span class="icon">
+                                <i class="fas fa-key"></i>
+                            </span>
+                            <span>Get Public Key</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="content">
+            <form action="/search" method="GET" class="control">
+                <p>Search feeds by URL (min. 5 characters):</p>
+                <div class="field has-addons">
+                    <div class="control is-expanded">
+                        <input class="input is-link is-normal" name="query" type="text" placeholder="bitcoin">
+                    </div>
+                    <div class="control">
+                        <button class="button is-info">
+                            <span class="icon">
+                                <i class="fas fa-filter"></i>
+                            </span>
+                            <span>Search</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <h2 class="subtitle">Existing feeds:</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Icon</th>
+                    <th>Feed URL</th>
+                    <th>Public keys (npub / hex)</th>
+                    <th>Subscribe</th>
+                    <th>Manage</th>
+                </tr>
+            </thead>
+            <tbody id="feed-list" hx-confirm="Are you sure?" hx-target="closest tr" hx-swap="outerHTML swap:1s">
+                {{ block "feeds-display-fragment" .}}
+                {{range .Entries}}
+                <tr>
+                    <td><img src="{{.BookmarkEntity.ImageURL}}" alt="feed icon" width="64" height="64"></td>
+                    <td><a href="{{.BookmarkEntity.URL}}" style="word-break: break-all;">{{.BookmarkEntity.URL}}</a>
+                    </td>
+                    <td>
+                        <a href="https://njump.me/{{.NPubKey}}" style="word-break: break-all;">{{.NPubKey}}</a>
+                        <p>---</p>
+                        <a href="https://njump.me/{{.NPubKey}}"
+                            style="word-break: break-all;">{{.BookmarkEntity.PubKey}}</a>
+                    </td>
+                    <td><img src="/assets/qrcodes/{{.NPubKey}}.png" alt="npub qrcode" width="128" height="128"></td>
+                    <td>
+                        <button class="button is-small is-link is-light" id="btn-delete"
+                            hx-delete="/delete?pubkey={{.BookmarkEntity.PubKey}}">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+                {{end}}
+                {{end}}
+            </tbody>
+        </table>
         </p>
     </div>
-</footer>
+    <footer class="footer">
+        <div class="content has-text-centered">
+            <p>
+                <a href="https://github.com/trinidz/rssnotes"><strong>rssnotes</strong></a> original work by <a
+                    href="https://fiatjaf.com">fiatjaf</a> and <a href="https://piraces.dev">piraces</a> modifications
+                by <a
+                    href="https://njump.me/npub15ucds95a8m2whgj4esll39lhxta5jwk8lqvmtz6ne8lf8ksmggrqz74dq7">trinidz</a>.
+                The source code is
+                <a href="https://unlicense.org/">UNlicensed</a>. Keep the good vibes 🤙
+            </p>
+        </div>
+    </footer>
 </body>
+
 </html>

@@ -68,8 +68,34 @@ func handleFrontpage(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
+func handleMetricsDisplay(w http.ResponseWriter, _ *http.Request) {
+	items, err := getSavedEntries()
+	if err != nil {
+		log.Print("[ERROR] ", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	data := struct {
+		Count               int
+		KindTextNoteCreated string
+		KindTextNoteDeleted string
+		QueryEventsRequests string
+		NotesBlasted        string
+	}{
+		Count:               len(items),
+		KindTextNoteCreated: getPrometheusMetric(metrics.KindTextNoteCreated.Desc()),
+		KindTextNoteDeleted: getPrometheusMetric(metrics.KindTextNoteDeleted.Desc()),
+		QueryEventsRequests: getPrometheusMetric(metrics.QueryEventsRequests.Desc()),
+		NotesBlasted:        getPrometheusMetric(metrics.NotesBlasted.Desc()),
+	}
+
+	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/index.html", s.TemplatePath)))
+	if err := tmpl.ExecuteTemplate(w, "metrics-display-fragment", data); err != nil {
+		log.Print("[ERROR] ", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 func handleCreateFeed(w http.ResponseWriter, r *http.Request, secret *string) {
-	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/created.html", s.TemplatePath)))
 	metrics.CreateRequests.Inc()
 	entry := createFeed(r, secret)
 
@@ -98,6 +124,7 @@ func handleCreateFeed(w http.ResponseWriter, r *http.Request, secret *string) {
 		ErrorMessage: entry.ErrorMessage,
 	}
 
+	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/created.html", s.TemplatePath)))
 	err := tmpl.Execute(w, data)
 	if err != nil {
 		log.Print("[ERROR] ", err)
@@ -216,47 +243,8 @@ func handleDeleteFeed(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[ERROR] could not delete feed '%q'...Error: %s ", feedPubkey, err)
 	}
 
-	items, err := getSavedEntries()
-	if err != nil {
-		log.Printf("[ERROR] %s", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-
-	npub, _ := nip19.EncodePublicKey(s.RelayPubkey)
-	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/index.html", s.TemplatePath)))
-
-	data := struct {
-		RelayName           string
-		RelayPubkey         string
-		RelayNPubkey        string
-		RelayDescription    string
-		RelayURL            string
-		Count               int
-		Entries             []GUIEntry
-		KindTextNoteCreated string
-		KindTextNoteDeleted string
-		QueryEventsRequests string
-		NotesBlasted        string
-	}{
-		RelayName:           s.RelayName,
-		RelayPubkey:         s.RelayPubkey,
-		RelayNPubkey:        npub,
-		RelayDescription:    s.RelayDescription,
-		RelayURL:            s.RelayURL,
-		Count:               len(items),
-		Entries:             items,
-		KindTextNoteCreated: getPrometheusMetric(metrics.KindTextNoteCreated.Desc()),
-		KindTextNoteDeleted: getPrometheusMetric(metrics.KindTextNoteDeleted.Desc()),
-		QueryEventsRequests: getPrometheusMetric(metrics.QueryEventsRequests.Desc()),
-		NotesBlasted:        getPrometheusMetric(metrics.NotesBlasted.Desc()),
-	}
-
-	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-
-	if err := tmpl.Execute(w, data); err != nil {
-		log.Printf("[ERROR] %s", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	tmpl := template.New("t")
+	tmpl.Execute(w, nil)
 }
 
 func handleImportOpml(w http.ResponseWriter, r *http.Request) {
