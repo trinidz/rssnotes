@@ -3,7 +3,8 @@ package scraper
 import (
 	"strings"
 
-	htmlutil "github.com/nkanaev/yarr/rsshtmlutil"
+	htmlutil "rssnotes/rsshtmlutil"
+
 	"golang.org/x/net/html"
 )
 

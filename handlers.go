@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"rssnotes/metrics"
 
-	//"rssnotes/rssworker"
+	"rssnotes/rssworker"
 	"strconv"
 	"strings"
 	"text/template"
@@ -195,7 +195,7 @@ func createFeed(r *http.Request, secret *string) *GUIEntry {
 	guientry.NPubKey, _ = nip19.EncodePublicKey(publicKey)
 	guientry.BookmarkEntity.ImageURL = s.DefaultProfilePicUrl
 
-	faviconUrl, err := worker.FindFaviconURL(parsedFeed.Link, feedUrl)
+	faviconUrl, err := rssworker.FindFaviconURL(parsedFeed.Link, feedUrl)
 	if err != nil {
 		log.Print("[ERROR] FindFavicon", err)
 	} else if faviconUrl != "" {
@@ -392,7 +392,7 @@ func importFeeds(opmlUrls []opml.Outline, secret *string) []*GUIEntry {
 		}
 
 		localImageURL := s.DefaultProfilePicUrl
-		faviconUrl, err := worker.FindFaviconURL(parsedFeed.Link, feedUrl)
+		faviconUrl, err := rssworker.FindFaviconURL(parsedFeed.Link, feedUrl)
 		if err != nil {
 			log.Print("[ERROR] FindFavicon", err)
 		} else if faviconUrl != "" {
