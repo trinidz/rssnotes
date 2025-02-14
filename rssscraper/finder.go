@@ -1,9 +1,10 @@
-package scraper
+package rssscraper
 
 import (
 	"strings"
 
-	htmlutil "github.com/nkanaev/yarr/rsshtmlutil"
+	htmlutil "rssnotes/rsshtmlutil"
+
 	"golang.org/x/net/html"
 )
 

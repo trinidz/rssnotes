@@ -1,4 +1,4 @@
-package worker
+package rssworker
 
 import (
 	"net"
@@ -11,8 +11,6 @@ type Client struct {
 	userAgent  string
 }
 
-var client *Client
-
 func (c *Client) get(url string) (*http.Response, error) {
 	return c.getConditional(url, "", "")
 }
@@ -22,19 +20,20 @@ func (c *Client) getConditional(url, lastModified, etag string) (*http.Response,
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "rssnotes/0.0.12")
+	req.Header.Set("User-Agent", c.userAgent)
 	if lastModified != "" {
 		req.Header.Set("If-Modified-Since", lastModified)
 	}
 	if etag != "" {
 		req.Header.Set("If-None-Match", etag)
 	}
-
 	return c.httpClient.Do(req)
 }
 
-func SetVersion(agent, num string) {
-	client.userAgent = agent + "/" + num
+var client *Client
+
+func SetVersion(num string) {
+	client.userAgent = "Yarr/" + num
 }
 
 func init() {
@@ -52,6 +51,6 @@ func init() {
 	}
 	client = &Client{
 		httpClient: httpClient,
-		userAgent:  "Rssnotes/1.0",
+		userAgent:  "Yarr/1.0",
 	}
 }

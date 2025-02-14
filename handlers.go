@@ -5,7 +5,8 @@ import (
 	"io"
 	"net/http"
 	"rssnotes/metrics"
-	"rssnotes/worker"
+
+	//"rssnotes/rssworker"
 	"strconv"
 	"strings"
 	"text/template"
