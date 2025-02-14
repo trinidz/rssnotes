@@ -66,10 +66,10 @@ func DiscoverRssFeed(candidateUrl string) (*DiscoverResult, error) {
 	}
 	switch {
 	case len(sources) == 0:
-		return nil, errors.New("No feeds found at the given url")
+		return nil, errors.New("no feeds found at the given url")
 	case len(sources) == 1:
 		if sources[0].Url == candidateUrl {
-			return nil, errors.New("Recursion!")
+			return nil, errors.New("recursion")
 		}
 		return DiscoverRssFeed(sources[0].Url)
 	}

@@ -8,6 +8,13 @@ import (
 	"rssnotes/scraper"
 )
 
+var imageTypes = map[string]bool{
+	"image/x-icon": true,
+	"image/png":    true,
+	"image/jpeg":   true,
+	"image/gif":    true,
+}
+
 func FindFaviconURL(siteUrl, feedUrl string) (string, error) {
 	urls := make([]string, 0)
 
