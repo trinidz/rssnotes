@@ -140,21 +140,31 @@ func createFeed(r *http.Request, secret *string) *GUIEntry {
 		Error: false,
 	}
 
-	if !IsValidHttpUrl(urlParam) {
-		log.Printf("[DEBUG] tried to create feed from invalid feed url '%q' skipping...", urlParam)
-		guientry.ErrorCode = http.StatusBadRequest
-		guientry.Error = true
-		guientry.ErrorMessage = "Invalid URL provided (must be in absolute format and with https or https scheme)..."
-		return &guientry
-	}
-
-	feedUrl := getFeedUrl(urlParam)
-	if feedUrl == "" {
+	discFeed, err := rssworker.DiscoverRssFeed(urlParam)
+	if err != nil {
 		guientry.ErrorCode = http.StatusBadRequest
 		guientry.Error = true
 		guientry.ErrorMessage = "Could not find a feed URL in there..."
 		return &guientry
 	}
+
+	feedUrl := discFeed.FeedLink
+
+	// if !IsValidHttpUrl(urlParam) {
+	// 	log.Printf("[DEBUG] tried to create feed from invalid feed url '%q' skipping...", urlParam)
+	// 	guientry.ErrorCode = http.StatusBadRequest
+	// 	guientry.Error = true
+	// 	guientry.ErrorMessage = "Invalid URL provided (must be in absolute format and with https or https scheme)..."
+	// 	return &guientry
+	// }
+
+	// feedUrl := getFeedUrl(urlParam)
+	// if feedUrl == "" {
+	// 	guientry.ErrorCode = http.StatusBadRequest
+	// 	guientry.Error = true
+	// 	guientry.ErrorMessage = "Could not find a feed URL in there..."
+	// 	return &guientry
+	// }
 
 	sk := getPrivateKeyFromFeedUrl(feedUrl, *secret)
 	publicKey, err := nostr.GetPublicKey(sk)
@@ -313,8 +323,8 @@ func importFeeds(opmlUrls []opml.Outline, secret *string) []*GUIEntry {
 			continue
 		}
 
-		feedUrl := getFeedUrl(urlParam.XMLURL)
-		if feedUrl == "" {
+		discFeed, err := rssworker.DiscoverRssFeed(urlParam.XMLURL)
+		if err != nil {
 			importedEntries = append(importedEntries, &GUIEntry{
 				BookmarkEntity: Entity{URL: urlParam.XMLURL},
 				ErrorMessage:   "Could not find a feed URL in there...",
@@ -322,9 +332,23 @@ func importFeeds(opmlUrls []opml.Outline, secret *string) []*GUIEntry {
 				ErrorCode:      http.StatusBadRequest,
 			})
 			importProgressCh <- ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
-			log.Printf("[DEBUG] Could not find a feed URL in %s", feedUrl)
+			log.Printf("[DEBUG] Could not find a feed URL in %s", urlParam.XMLURL)
 			continue
 		}
+		feedUrl := discFeed.FeedLink
+
+		// feedUrl := getFeedUrl(urlParam.XMLURL)
+		// if feedUrl == "" {
+		// 	importedEntries = append(importedEntries, &GUIEntry{
+		// 		BookmarkEntity: Entity{URL: urlParam.XMLURL},
+		// 		ErrorMessage:   "Could not find a feed URL in there...",
+		// 		Error:          true,
+		// 		ErrorCode:      http.StatusBadRequest,
+		// 	})
+		// 	importProgressCh <- ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
+		// 	log.Printf("[DEBUG] Could not find a feed URL in %s", feedUrl)
+		// 	continue
+		// }
 
 		sk := getPrivateKeyFromFeedUrl(feedUrl, *secret)
 		publicKey, err := nostr.GetPublicKey(sk)
