@@ -5,7 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"rssnotes/scraper"
+	"rssnotes/rssscraper"
 )
 
 var imageTypes = map[string]bool{
@@ -30,7 +30,7 @@ func FindFaviconURL(siteUrl, feedUrl string) (string, error) {
 		if res, err := client.get(siteUrl); err == nil {
 			defer res.Body.Close()
 			if body, err := io.ReadAll(res.Body); err == nil {
-				urls = append(urls, scraper.FindIcons(string(body), siteUrl)...)
+				urls = append(urls, rssscraper.FindIcons(string(body), siteUrl)...)
 				if c := favicon(siteUrl); c != "" {
 					urls = append(urls, c)
 				}
