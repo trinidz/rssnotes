@@ -1,4 +1,4 @@
-package rssparser
+package yarrparser
 
 import "time"
 

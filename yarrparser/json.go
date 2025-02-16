@@ -1,5 +1,5 @@
 // JSON 1.0 parser
-package rssparser
+package yarrparser
 
 import (
 	"encoding/json"

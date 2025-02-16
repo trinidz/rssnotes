@@ -1,4 +1,4 @@
-package rssworker
+package yarrworker
 
 import (
 	"net"

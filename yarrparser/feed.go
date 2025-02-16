@@ -1,4 +1,4 @@
-package rssparser
+package yarrparser
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	htmlutil "rssnotes/rsshtmlutil"
+	htmlutil "rssnotes/yarrhtmlutil"
 
 	"golang.org/x/net/html/charset"
 )

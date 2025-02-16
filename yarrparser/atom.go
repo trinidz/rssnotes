@@ -1,12 +1,12 @@
 // Atom 1.0 parser
-package rssparser
+package yarrparser
 
 import (
 	"encoding/xml"
 	"io"
 	"strings"
 
-	htmlutil "rssnotes/rsshtmlutil"
+	htmlutil "rssnotes/yarrhtmlutil"
 )
 
 type atomFeed struct {

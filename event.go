@@ -193,6 +193,12 @@ func deleteRemoteFollow(pubkeyHex string) nostr.Tags {
 
 // TRUE if feed exists in bookmark event
 func feedExists(pubkeyHex, privKeyHex, feedUrl string) (bool, error) {
+
+	if feedUrl == "" {
+		log.Printf("[ERROR] feedURL is empty")
+		return false, fmt.Errorf("feedURL is empty")
+	}
+
 	var bookMarkTags nostr.Tags
 
 	var bookmarkFilter nostr.Filter = nostr.Filter{

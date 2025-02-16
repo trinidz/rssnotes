@@ -17,7 +17,6 @@ import (
 	"time"
 
 	md "github.com/JohannesKaufmann/html-to-markdown"
-	"github.com/PuerkitoBio/goquery"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/mmcdole/gofeed"
 	"github.com/nbd-wtf/go-nostr"
@@ -35,53 +34,6 @@ var (
 		Timeout: 5 * time.Second,
 	}
 )
-
-var rss_types = []string{
-	"rss+xml",
-	"atom+xml",
-	"feed+json",
-	"text/xml",
-	"application/xml",
-}
-
-func getFeedUrl(url string) string {
-	resp, err := client.Get(url)
-	if err != nil {
-		log.Printf("[ERROR] %s", err)
-		return ""
-	} else if resp.StatusCode >= 300 {
-		log.Printf("[ERROR] status code: %d", resp.StatusCode)
-		return ""
-	}
-
-	ct := resp.Header.Get("Content-Type")
-	for _, typ := range rss_types {
-		if strings.Contains(ct, typ) {
-			return url
-		}
-	}
-
-	if strings.Contains(ct, "text/html") {
-		doc, err := goquery.NewDocumentFromReader(resp.Body)
-		if err != nil {
-			log.Printf("[ERROR] %s", err)
-			return ""
-		}
-
-		for _, typ := range rss_types {
-			href, _ := doc.Find(fmt.Sprintf("link[type*='%s']", typ)).Attr("href")
-			if href == "" {
-				continue
-			}
-			if !strings.HasPrefix(href, "http") && !strings.HasPrefix(href, "https") {
-				href, _ = UrlJoin(url, href)
-			}
-			return href
-		}
-	}
-
-	return ""
-}
 
 func parseFeedForUrl(url string) (*gofeed.Feed, error) {
 	//metrics.CacheMiss.Inc()

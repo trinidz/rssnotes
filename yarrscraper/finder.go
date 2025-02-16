@@ -1,9 +1,9 @@
-package rssscraper
+package yarrscraper
 
 import (
 	"strings"
 
-	htmlutil "rssnotes/rsshtmlutil"
+	htmlutil "rssnotes/yarrhtmlutil"
 
 	"golang.org/x/net/html"
 )

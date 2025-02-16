@@ -2,7 +2,7 @@
 // - 0.91 netscape
 // - 0.91 userland
 // - 2.0
-package rssparser
+package yarrparser
 
 import (
 	"encoding/xml"

@@ -1,4 +1,4 @@
-package rssworker
+package yarrworker
 
 import (
 	"bytes"
@@ -8,8 +8,8 @@ import (
 	"mime"
 	"net/http"
 
-	"rssnotes/rssparser"
-	"rssnotes/rssscraper"
+	"rssnotes/yarrparser"
+	"rssnotes/yarrscraper"
 
 	"golang.org/x/net/html/charset"
 )
@@ -20,7 +20,7 @@ type FeedSource struct {
 }
 
 type DiscoverResult struct {
-	Feed     *rssparser.Feed
+	Feed     *yarrparser.Feed
 	FeedLink string
 	Sources  []FeedSource
 }
@@ -44,7 +44,7 @@ func DiscoverRssFeed(candidateUrl string) (*DiscoverResult, error) {
 	}
 
 	// Try to feed into parser
-	feed, err := rssparser.ParseAndFix(bytes.NewReader(body), candidateUrl, cs)
+	feed, err := yarrparser.ParseAndFix(bytes.NewReader(body), candidateUrl, cs)
 	if err == nil {
 		result.Feed = feed
 		result.FeedLink = candidateUrl
@@ -61,7 +61,7 @@ func DiscoverRssFeed(candidateUrl string) (*DiscoverResult, error) {
 		}
 	}
 	sources := make([]FeedSource, 0)
-	for url, title := range rssscraper.FindFeeds(content, candidateUrl) {
+	for url, title := range yarrscraper.FindFeeds(content, candidateUrl) {
 		sources = append(sources, FeedSource{Title: title, Url: url})
 	}
 	switch {

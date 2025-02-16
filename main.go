@@ -168,7 +168,7 @@ func main() {
 	mux.HandleFunc(" /delete", handleDeleteFeed)
 	mux.Handle("GET /metrics", promhttp.Handler())
 
-	mux.HandleFunc(" /metricsDisplay", handleMetricsDisplay)
+	mux.HandleFunc("GET /metricsDisplay", handleMetricsDisplay)
 
 	mux.HandleFunc("GET /health", handleHealth)
 	mux.HandleFunc("GET /log", handleLog)

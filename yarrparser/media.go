@@ -1,4 +1,4 @@
-package rssparser
+package yarrparser
 
 type media struct {
 	MediaGroups       []mediaGroup       `xml:"http://search.yahoo.com/mrss/ group"`

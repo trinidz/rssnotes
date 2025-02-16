@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"rssnotes/metrics"
 
-	"rssnotes/rssworker"
+	"rssnotes/yarrworker"
 	"strconv"
 	"strings"
 	"text/template"
@@ -140,31 +140,14 @@ func createFeed(r *http.Request, secret *string) *GUIEntry {
 		Error: false,
 	}
 
-	discFeed, err := rssworker.DiscoverRssFeed(urlParam)
-	if err != nil {
+	discFeed, err := yarrworker.DiscoverRssFeed(urlParam)
+	if err != nil || discFeed.FeedLink == "" {
 		guientry.ErrorCode = http.StatusBadRequest
 		guientry.Error = true
 		guientry.ErrorMessage = "Could not find a feed URL in there..."
 		return &guientry
 	}
-
 	feedUrl := discFeed.FeedLink
-
-	// if !IsValidHttpUrl(urlParam) {
-	// 	log.Printf("[DEBUG] tried to create feed from invalid feed url '%q' skipping...", urlParam)
-	// 	guientry.ErrorCode = http.StatusBadRequest
-	// 	guientry.Error = true
-	// 	guientry.ErrorMessage = "Invalid URL provided (must be in absolute format and with https or https scheme)..."
-	// 	return &guientry
-	// }
-
-	// feedUrl := getFeedUrl(urlParam)
-	// if feedUrl == "" {
-	// 	guientry.ErrorCode = http.StatusBadRequest
-	// 	guientry.Error = true
-	// 	guientry.ErrorMessage = "Could not find a feed URL in there..."
-	// 	return &guientry
-	// }
 
 	sk := getPrivateKeyFromFeedUrl(feedUrl, *secret)
 	publicKey, err := nostr.GetPublicKey(sk)
@@ -205,7 +188,7 @@ func createFeed(r *http.Request, secret *string) *GUIEntry {
 	guientry.NPubKey, _ = nip19.EncodePublicKey(publicKey)
 	guientry.BookmarkEntity.ImageURL = s.DefaultProfilePicUrl
 
-	faviconUrl, err := rssworker.FindFaviconURL(parsedFeed.Link, feedUrl)
+	faviconUrl, err := yarrworker.FindFaviconURL(parsedFeed.Link, feedUrl)
 	if err != nil {
 		log.Print("[ERROR] FindFavicon", err)
 	} else if faviconUrl != "" {
@@ -323,8 +306,8 @@ func importFeeds(opmlUrls []opml.Outline, secret *string) []*GUIEntry {
 			continue
 		}
 
-		discFeed, err := rssworker.DiscoverRssFeed(urlParam.XMLURL)
-		if err != nil {
+		discFeed, err := yarrworker.DiscoverRssFeed(urlParam.XMLURL)
+		if err != nil || discFeed.FeedLink == "" {
 			importedEntries = append(importedEntries, &GUIEntry{
 				BookmarkEntity: Entity{URL: urlParam.XMLURL},
 				ErrorMessage:   "Could not find a feed URL in there...",
@@ -336,19 +319,6 @@ func importFeeds(opmlUrls []opml.Outline, secret *string) []*GUIEntry {
 			continue
 		}
 		feedUrl := discFeed.FeedLink
-
-		// feedUrl := getFeedUrl(urlParam.XMLURL)
-		// if feedUrl == "" {
-		// 	importedEntries = append(importedEntries, &GUIEntry{
-		// 		BookmarkEntity: Entity{URL: urlParam.XMLURL},
-		// 		ErrorMessage:   "Could not find a feed URL in there...",
-		// 		Error:          true,
-		// 		ErrorCode:      http.StatusBadRequest,
-		// 	})
-		// 	importProgressCh <- ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
-		// 	log.Printf("[DEBUG] Could not find a feed URL in %s", feedUrl)
-		// 	continue
-		// }
 
 		sk := getPrivateKeyFromFeedUrl(feedUrl, *secret)
 		publicKey, err := nostr.GetPublicKey(sk)
@@ -416,7 +386,7 @@ func importFeeds(opmlUrls []opml.Outline, secret *string) []*GUIEntry {
 		}
 
 		localImageURL := s.DefaultProfilePicUrl
-		faviconUrl, err := rssworker.FindFaviconURL(parsedFeed.Link, feedUrl)
+		faviconUrl, err := yarrworker.FindFaviconURL(parsedFeed.Link, feedUrl)
 		if err != nil {
 			log.Print("[ERROR] FindFavicon", err)
 		} else if faviconUrl != "" {
