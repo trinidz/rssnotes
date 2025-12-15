@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -21,6 +22,7 @@ import (
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/nbd-wtf/go-nostr/nip19"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/skip2/go-qrcode"
 
 	"encoding/json"
@@ -29,6 +31,7 @@ import (
 
 var (
 	recentImportedEntries []*models.GUIEntry
+	importProgressCh      = make(chan models.ImportProgressStruct)
 )
 
 func (s *Server) handler() http.Handler {
@@ -50,6 +53,18 @@ func (s *Server) handler() http.Handler {
 	r.For("/", s.handleFrontpage)
 	//r.For("/static/*path", s.handleStatic)
 	r.For("/assets/*path", s.handleStatic)
+	r.For("/create", (func(c *router.Context) {
+		s.handleCreateFeed(c, &s.Cfg.RandomSecret)
+	}))
+	r.For("/import", s.handleImportOpml)
+	r.For("/search", s.handleSearch)
+	r.For("/progress", s.handleImportProgress)
+	r.For("/detail", s.handleImportDetail)
+	r.For("/export", s.handleExportOpml)
+	r.For("/delete", handleDeleteFeed)
+	r.For("/metrics", func(c *router.Context) {
+		promhttp.Handler().ServeHTTP(c.Out, c.Req)
+	})
 	r.For("/metricsDisplay", s.handleMetricsDisplay)
 	r.For("/log", s.handleLog)
 	r.For("/health", s.handleHealth)
@@ -139,12 +154,12 @@ func (s *Server) handleMetricsDisplay(c *router.Context) {
 
 func (s *Server) handleCreateFeed(c *router.Context, secret *string) {
 	metrics.CreateRequests.Inc()
-	entry := createFeed(c.Req, secret)
+	entry := s.createFeed(c.Req, secret)
 
 	followAction := models.FollowManagment{
 		Action: models.Sync,
 	}
-	models.followManagmentCh <- followAction
+	followManagmentCh <- followAction
 
 	data := struct {
 		RelayName    string
@@ -190,7 +205,7 @@ func (s *Server) createFeed(r *http.Request, secret *string) *models.GUIEntry {
 	}
 	feedUrl := discFeed.FeedLink
 
-	sk := getPrivateKeyFromFeedUrl(feedUrl, *secret)
+	sk := relays.GetPrivateKeyFromFeedUrl(feedUrl, *secret)
 	publicKey, err := nostr.GetPublicKey(sk)
 	if err != nil {
 		guientry.ErrorCode = http.StatusInternalServerError
@@ -202,7 +217,7 @@ func (s *Server) createFeed(r *http.Request, secret *string) *models.GUIEntry {
 
 	publicKey = strings.TrimSpace(publicKey)
 
-	if feedExists, err := feedExists(publicKey, sk, feedUrl); err != nil || feedExists {
+	if feedExists, err := relays.FeedExists(publicKey, sk, feedUrl); err != nil || feedExists {
 		if feedExists {
 			log.Printf("[DEBUG] feedUrl %s with pubkey %s already exists", feedUrl, publicKey)
 			guientry.ErrorMessage = fmt.Sprintf("Feed %s already exists", feedUrl)
@@ -215,7 +230,7 @@ func (s *Server) createFeed(r *http.Request, secret *string) *models.GUIEntry {
 		return &guientry
 	}
 
-	parsedFeed, err := parseFeedForUrl(feedUrl)
+	parsedFeed, err := relays.ParseFeedForUrl(feedUrl)
 	if err != nil || parsedFeed == nil {
 		guientry.ErrorCode = http.StatusBadRequest
 		guientry.Error = true
@@ -236,7 +251,7 @@ func (s *Server) createFeed(r *http.Request, secret *string) *models.GUIEntry {
 		guientry.BookmarkEntity.ImageURL = faviconUrl
 	}
 
-	if err := createMetadataNote(publicKey, sk, parsedFeed, guientry.BookmarkEntity.ImageURL); err != nil {
+	if err := relays.CreateMetadataNote(publicKey, sk, parsedFeed, guientry.BookmarkEntity.ImageURL); err != nil {
 		log.Printf("[ERROR] creating metadata note %s", err)
 	}
 
@@ -244,16 +259,16 @@ func (s *Server) createFeed(r *http.Request, secret *string) *models.GUIEntry {
 	// 	publishNostrEventCh <- metadataEvent
 	// }
 
-	lastPostTime, allPostTimes := initFeed(publicKey, sk, feedUrl, parsedFeed)
+	lastPostTime, allPostTimes := relays.InitFeed(publicKey, sk, feedUrl, parsedFeed)
 
-	if err := addEntityToBookmarkEvent([]models.Entity{
+	if err := relays.AddEntityToBookmarkEvent([]models.Entity{
 		{PubKey: publicKey,
 			PrivateKey:      sk,
 			URL:             feedUrl,
 			ImageURL:        guientry.BookmarkEntity.ImageURL,
 			LastPostTime:    lastPostTime,
 			LastCheckedTime: time.Now().Unix(),
-			AvgPostTime:     CalcAvgPostTime(allPostTimes)}}); err != nil {
+			AvgPostTime:     relays.CalcAvgPostTime(allPostTimes)}}); err != nil {
 		log.Printf("[ERROR] feed entity %s not added to bookmark", feedUrl)
 	}
 
@@ -274,7 +289,7 @@ func handleDeleteFeed(c *router.Context) {
 	}
 	followManagmentCh <- followAction
 
-	if err := deleteEntityInBookmarkEvent(feedPubkey); err != nil {
+	if err := relays.DeleteEntityInBookmarkEvent(feedPubkey); err != nil {
 		log.Printf("[ERROR] could not delete feed '%q'...Error: %s ", feedPubkey, err)
 	}
 
@@ -323,7 +338,7 @@ func (s *Server) handleImportOpml(c *router.Context) {
 	}
 
 	go func() {
-		recentImportedEntries = importFeeds(doc.Body.Outlines, &s.Cfg.RandomSecret)
+		recentImportedEntries = s.importFeeds(doc.Body.Outlines, &s.Cfg.RandomSecret)
 	}()
 
 	log.Print("[DEBUG] opml import started.")
@@ -342,7 +357,7 @@ func (s *Server) importFeeds(opmlUrls []opml.Outline, secret *string) []*models.
 				Error:          true,
 				ErrorCode:      http.StatusBadRequest,
 			})
-			importProgressCh <- models.ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
+			importProgressCh <- models.ImportProgressStruct{EntryIndex: urlIndex, TotalEntries: len(opmlUrls)}
 			log.Printf("[DEBUG] invalid feed url '%q' skipping...", urlParam)
 			continue
 		}
@@ -355,13 +370,13 @@ func (s *Server) importFeeds(opmlUrls []opml.Outline, secret *string) []*models.
 				Error:          true,
 				ErrorCode:      http.StatusBadRequest,
 			})
-			importProgressCh <- models.ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
+			importProgressCh <- models.ImportProgressStruct{EntryIndex: urlIndex, TotalEntries: len(opmlUrls)}
 			log.Printf("[DEBUG] Could not find a feed URL in %s", urlParam.XMLURL)
 			continue
 		}
 		feedUrl := discFeed.FeedLink
 
-		sk := getPrivateKeyFromFeedUrl(feedUrl, *secret)
+		sk := relays.GetPrivateKeyFromFeedUrl(feedUrl, *secret)
 		publicKey, err := nostr.GetPublicKey(sk)
 		if err != nil {
 			importedEntries = append(importedEntries, &models.GUIEntry{
@@ -370,22 +385,22 @@ func (s *Server) importFeeds(opmlUrls []opml.Outline, secret *string) []*models.
 				Error:          true,
 				ErrorCode:      http.StatusBadRequest,
 			})
-			importProgressCh <- models.ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
+			importProgressCh <- models.ImportProgressStruct{EntryIndex: urlIndex, TotalEntries: len(opmlUrls)}
 			log.Printf("[ERROR] feed %s bad private key: %s", feedUrl, err)
 			continue
 		}
 
 		publicKey = strings.TrimSpace(publicKey)
 
-		feedExists, err := feedExists(publicKey, sk, feedUrl)
+		feedExists, err := relays.FeedExists(publicKey, sk, feedUrl)
 		if feedExists {
 			importedEntries = append(importedEntries, &models.GUIEntry{
-				BookmarkEntity: Entity{URL: urlParam.XMLURL},
+				BookmarkEntity: models.Entity{URL: urlParam.XMLURL},
 				ErrorMessage:   "Feed already exists",
 				Error:          true,
 				ErrorCode:      http.StatusBadRequest,
 			})
-			importProgressCh <- models.ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
+			importProgressCh <- models.ImportProgressStruct{EntryIndex: urlIndex, TotalEntries: len(opmlUrls)}
 			log.Printf("[DEBUG] feedUrl %s with pubkey %s already exists", feedUrl, publicKey)
 			continue
 		} else if err != nil {
@@ -395,12 +410,12 @@ func (s *Server) importFeeds(opmlUrls []opml.Outline, secret *string) []*models.
 				Error:          true,
 				ErrorCode:      http.StatusBadRequest,
 			})
-			importProgressCh <- models.ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
+			importProgressCh <- models.ImportProgressStruct{EntryIndex: urlIndex, TotalEntries: len(opmlUrls)}
 			log.Printf("[ERROR] could not determine if feedUrl %s with pubkey %s exists", feedUrl, publicKey)
 			continue
 		}
 
-		parsedFeed, err := parseFeedForUrl(feedUrl)
+		parsedFeed, err := relays.ParseFeedForUrl(feedUrl)
 		if err != nil {
 			importedEntries = append(importedEntries, &models.GUIEntry{
 				BookmarkEntity: models.Entity{URL: urlParam.XMLURL},
@@ -408,7 +423,7 @@ func (s *Server) importFeeds(opmlUrls []opml.Outline, secret *string) []*models.
 				Error:          true,
 				ErrorCode:      http.StatusBadRequest,
 			})
-			importProgressCh <- models.ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
+			importProgressCh <- models.ImportProgressStruct{EntryIndex: urlIndex, TotalEntries: len(opmlUrls)}
 			log.Printf("[ERROR] can not parse feed %s", err)
 			continue
 		}
@@ -422,7 +437,7 @@ func (s *Server) importFeeds(opmlUrls []opml.Outline, secret *string) []*models.
 			ErrorCode:      0,
 		}
 
-		if err := qrcode.WriteFile(fmt.Sprintf("nostr:%s", guiEntry.NPubKey), qrcode.Low, 128, fmt.Sprintf("%s/%s.png", s.QRCodePath, guiEntry.NPubKey)); err != nil {
+		if err := qrcode.WriteFile(fmt.Sprintf("nostr:%s", guiEntry.NPubKey), qrcode.Low, 128, fmt.Sprintf("%s/%s.png", s.Cfg.QRCodePath, guiEntry.NPubKey)); err != nil {
 			log.Print("[ERROR] ", err)
 		}
 
@@ -434,11 +449,11 @@ func (s *Server) importFeeds(opmlUrls []opml.Outline, secret *string) []*models.
 			localImageURL = faviconUrl
 		}
 
-		if err := createMetadataNote(publicKey, sk, parsedFeed, localImageURL); err != nil {
+		if err := relays.CreateMetadataNote(publicKey, sk, parsedFeed, localImageURL); err != nil {
 			log.Printf("[ERROR] creating metadata note %s", err)
 		}
 
-		lastPostTime, allPostTimes := initFeed(publicKey, sk, feedUrl, parsedFeed)
+		lastPostTime, allPostTimes := relays.InitFeed(publicKey, sk, feedUrl, parsedFeed)
 		bookmarkEntities = append(bookmarkEntities, models.Entity{
 			PubKey:          publicKey,
 			PrivateKey:      sk,
@@ -446,20 +461,20 @@ func (s *Server) importFeeds(opmlUrls []opml.Outline, secret *string) []*models.
 			ImageURL:        localImageURL,
 			LastPostTime:    lastPostTime,
 			LastCheckedTime: time.Now().Unix(),
-			AvgPostTime:     helpers.CalcAvgPostTime(allPostTimes),
+			AvgPostTime:     relays.CalcAvgPostTime(allPostTimes),
 		})
 
 		importedEntries = append(importedEntries, &guiEntry)
-		importProgressCh <- models.ImportProgressStruct{entryIndex: urlIndex, totalEntries: len(opmlUrls)}
+		importProgressCh <- models.ImportProgressStruct{EntryIndex: urlIndex, TotalEntries: len(opmlUrls)}
 	}
 
-	if err := addEntityToBookmarkEvent(bookmarkEntities); err != nil {
+	if err := relays.AddEntityToBookmarkEvent(bookmarkEntities); err != nil {
 		log.Printf("[ERROR] adding feed entities: %s", err)
 	}
 
 	//update kind 3 event
 	followAction := models.FollowManagment{
-		Action: Sync,
+		Action: models.Sync,
 	}
 	followManagmentCh <- followAction
 
@@ -468,10 +483,10 @@ func (s *Server) importFeeds(opmlUrls []opml.Outline, secret *string) []*models.
 
 func (s *Server) handleImportProgress(c *router.Context) {
 	importedURL := <-importProgressCh
-	progressPct := ((float32(importedURL.entryIndex) + 1.0) / float32(importedURL.totalEntries)) * 100.0
+	progressPct := ((float32(importedURL.EntryIndex) + 1.0) / float32(importedURL.TotalEntries)) * 100.0
 
-	if importedURL.entryIndex+1 < importedURL.totalEntries {
-		htmlStr := fmt.Sprintf("<div class='navbar-item' id='status-area' hx-get='/progress' hx-target='this' hx-swap='outerHTML' hx-trigger='every 600ms'>Processing...%d of %d<div class='navbar-item'><div id='progress' name='progress-bar' class='progress-bar' style='--width: %f' data-label=''></div></div></div>", importedURL.entryIndex+1, importedURL.totalEntries, progressPct)
+	if importedURL.EntryIndex+1 < importedURL.TotalEntries {
+		htmlStr := fmt.Sprintf("<div class='navbar-item' id='status-area' hx-get='/progress' hx-target='this' hx-swap='outerHTML' hx-trigger='every 600ms'>Processing...%d of %d<div class='navbar-item'><div id='progress' name='progress-bar' class='progress-bar' style='--width: %f' data-label=''></div></div></div>", importedURL.EntryIndex+1, importedURL.TotalEntries, progressPct)
 		tmpl, _ := template.New("t").Parse(htmlStr)
 		tmpl.Execute(c.Out, nil)
 	} else {
@@ -526,7 +541,7 @@ func (s *Server) handleExportOpml(c *router.Context) {
 		},
 	}
 
-	data, _ := getSavedEntities()
+	data, _ := relays.GetSavedEntities()
 
 	for _, feed := range data {
 		rssOMPL.Body.Outlines = append(rssOMPL.Body.Outlines, opml.Outline{
@@ -539,8 +554,8 @@ func (s *Server) handleExportOpml(c *router.Context) {
 		})
 	}
 
-	w.Header().Add("content-type", "application/opml")
-	w.Header().Add("content-disposition", "attachment; filename="+time.Now().Format(time.DateOnly)+"-rssnotes.opml")
+	c.Out.Header().Add("content-type", "application/opml")
+	c.Out.Header().Add("content-disposition", "attachment; filename="+time.Now().Format(time.DateOnly)+"-rssnotes.opml")
 	outp, err := rssOMPL.XML()
 	if err != nil {
 		log.Print("[ERROR] exporting opml file")
@@ -580,7 +595,7 @@ func (s *Server) handleSearch(c *router.Context) {
 		return
 	}
 
-	savedEntries, err := getSavedEntries()
+	savedEntries, err := relays.GetSavedEntries()
 	if err != nil {
 		http.Error(c.Out, err.Error(), http.StatusInternalServerError)
 		return
@@ -630,34 +645,13 @@ func (s *Server) handleHealth(c *router.Context) {
 		Version:          s.Cfg.Version,
 	}
 
-	respondWithJSON(c.Out, 200, data)
+	respondWithJSON(c, 200, data)
 }
 
 func (s *Server) handleLog(c *router.Context) {
 	c.Out.Header().Add("content-type", "application/opml")
 	c.Out.Header().Add("content-disposition", "attachment; filename="+time.Now().Format(time.DateOnly)+"-rssnotes.log")
 	http.ServeFile(c.Out, c.Req, s.Cfg.LogfilePath)
-}
-
-func updateRssNotesState() {
-	for {
-		select {
-		case followAction := <-followManagmentCh:
-			updateFollowListEvent(followAction)
-		case nostrEvent := <-publishNostrEventCh:
-			go func() {
-				blastEvent(&nostrEvent)
-			}()
-		case <-tickerUpdateFeeds.C:
-			checkAllFeeds()
-		case <-tickerDeleteOldNotes.C:
-			deleteOldKindTextNoteEvents()
-		case <-quitChannel:
-			tickerUpdateFeeds.Stop()
-			tickerDeleteOldNotes.Stop()
-			return
-		}
-	}
 }
 
 func respondWithJSON(c *router.Context, code int, payload interface{}) {
@@ -674,6 +668,17 @@ func respondWithJSON(c *router.Context, code int, payload interface{}) {
 }
 
 func (s *Server) getPrometheusMetric(promParam *prometheus.Desc) string {
+
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 2 {
+				return errors.New("stopped after 2 redirects")
+			}
+			return nil
+		},
+		Timeout: 3 * time.Second,
+	}
+
 	url := fmt.Sprintf("http://localhost:%s/metrics", s.Cfg.Port)
 
 	resp, err := client.Get(url)

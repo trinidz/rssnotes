@@ -4,9 +4,22 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"time"
 
 	"rssnotes/internal/config"
+	"rssnotes/internal/models"
+	"rssnotes/internal/relays"
 	"strings"
+
+	"github.com/nbd-wtf/go-nostr"
+)
+
+var (
+	tickerUpdateFeeds    *time.Ticker
+	tickerDeleteOldNotes *time.Ticker
+	quitChannel          = make(chan struct{})
+	publishNostrEventCh  = make(chan nostr.Event)
+	followManagmentCh    = make(chan models.FollowManagment)
 )
 
 type Server struct {
@@ -15,14 +28,21 @@ type Server struct {
 	// Feeds *rssfeeds.RssFeedStack
 }
 
-func NewServer(cfg *config.C) *Server {
+func NewServer(cfg config.C) *Server {
 	serverConfig := cfg
 	if serverConfig.RelayBasepath != "" {
 		serverConfig.RelayBasepath = "/" + strings.Trim(serverConfig.RelayBasepath, "/")
 	}
 
+	relays.RelayInit(serverConfig)
+
+	tickerUpdateFeeds = time.NewTicker(time.Duration(cfg.FeedItemsRefreshMinutes) * time.Minute)
+	tickerDeleteOldNotes = time.NewTicker(time.Duration(24) * time.Hour)
+
+	go updateRssNotesState()
+
 	return &Server{
-		Cfg: serverConfig,
+		Cfg: &serverConfig,
 		//Feeds: rssfd,
 	}
 }
@@ -48,3 +68,24 @@ func (s *Server) GetAddr() *url.URL {
 // func (s *Server) Start() http.Handler {
 // 	s.Serve().ServeHTTP(w, r)
 // }
+
+func updateRssNotesState() {
+	for {
+		select {
+		case followAction := <-followManagmentCh:
+			relays.UpdateFollowListEvent(followAction)
+		case nostrEvent := <-publishNostrEventCh:
+			go func() {
+				relays.BlastEvent(&nostrEvent)
+			}()
+		case <-tickerUpdateFeeds.C:
+			relays.CheckAllFeeds()
+		case <-tickerDeleteOldNotes.C:
+			relays.DeleteOldKindTextNoteEvents()
+		case <-quitChannel:
+			tickerUpdateFeeds.Stop()
+			tickerDeleteOldNotes.Stop()
+			return
+		}
+	}
+}

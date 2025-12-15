@@ -6,30 +6,21 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 
 	"rssnotes/internal/config"
-	"rssnotes/internal/models"
+	"rssnotes/internal/relays"
 	"rssnotes/server"
 
 	"github.com/hashicorp/logutils"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/mmcdole/gofeed"
-	"github.com/nbd-wtf/go-nostr"
 	"github.com/nbd-wtf/go-nostr/nip19"
 	"github.com/skip2/go-qrcode"
 )
 
 var (
-	s                   *config.C
-	followManagmentCh   = make(chan models.FollowManagment)
-	importProgressCh    = make(chan models.ImportProgressStruct)
-	publishNostrEventCh = make(chan nostr.Event)
-
-	tickerUpdateFeeds    *time.Ticker
-	tickerDeleteOldNotes *time.Ticker
-	quitChannel          = make(chan struct{})
+	s config.C
 )
 
 func main() {
@@ -62,7 +53,9 @@ func main() {
 		log.Printf("[ERROR] %s", err)
 	}
 
-	if err := createMetadataNote(s.RelayPubkey, s.RelayPrivkey, &gofeed.Feed{Title: s.RelayName, Description: s.RelayDescription}, s.DefaultProfilePicUrl); err != nil {
+	srvr := server.NewServer(s)
+
+	if err := relays.CreateMetadataNote(s.RelayPubkey, s.RelayPrivkey, &gofeed.Feed{Title: s.RelayName, Description: s.RelayDescription}, s.DefaultProfilePicUrl); err != nil {
 		log.Print("[ERROR] ", err)
 	}
 
@@ -71,13 +64,6 @@ func main() {
 			log.Print("[ERROR] creating relay QR code", err)
 		}
 	}
-
-	srvr := server.NewServer(s)
-
-	tickerUpdateFeeds = time.NewTicker(time.Duration(s.FeedItemsRefreshMinutes) * time.Minute)
-	tickerDeleteOldNotes = time.NewTicker(time.Duration(24) * time.Hour)
-
-	go updateRssNotesState()
 
 	// mux := relay.Router()
 	// mux.HandleFunc("/{$}", handleFrontpage)
@@ -97,10 +83,11 @@ func main() {
 	// mux.HandleFunc("GET /health", handleHealth)
 	// mux.HandleFunc("GET /log", handleLog)
 
-	fmt.Printf("running on 0.0.0.0:%s\n", s.Port)
+	fmt.Printf("listeniing on 0.0.0.0:%s%s\n", srvr.Cfg.Port, srvr.GetAddr().Path)
+	fmt.Printf("public url at %s\n", srvr.GetAddr().Scheme+"://"+srvr.GetAddr().Host+srvr.GetAddr().Path)
 	//if err := http.ListenAndServe(":"+s.Port, relay); err != nil {
 	if err := http.ListenAndServe(":"+s.Port, srvr.Serve()); err != nil {
 		fmt.Printf("ListenAndServe error %s", err)
-		log.Panicf("ListenAndServe error %s", err)
+		log.Panicf("[FATAL] ListenAndServe error %s", err)
 	}
 }

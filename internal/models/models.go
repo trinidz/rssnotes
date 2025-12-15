@@ -21,8 +21,8 @@ type FollowManagment struct {
 }
 
 type ImportProgressStruct struct {
-	entryIndex   int
-	totalEntries int
+	EntryIndex   int
+	TotalEntries int
 }
 
 type Entity struct {

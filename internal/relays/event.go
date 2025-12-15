@@ -122,7 +122,7 @@ func getRemoteFollows(pubkeyHex string) nostr.Tags {
 func getLocalFollows() nostr.Tags {
 	var localFollows []nostr.Tag
 
-	savedEnts, err := getSavedEntities()
+	savedEnts, err := GetSavedEntities()
 	if err != nil {
 		log.Printf("[ERROR] Can not get local follows %s", err)
 		return nil
@@ -193,7 +193,7 @@ func deleteRemoteFollow(pubkeyHex string) nostr.Tags {
 }
 
 // TRUE if feed exists in bookmark event
-func feedExists(pubkeyHex, privKeyHex, feedUrl string) (bool, error) {
+func FeedExists(pubkeyHex, privKeyHex, feedUrl string) (bool, error) {
 
 	if feedUrl == "" {
 		log.Printf("[ERROR] feedURL is empty")
@@ -227,7 +227,7 @@ func feedExists(pubkeyHex, privKeyHex, feedUrl string) (bool, error) {
 	return false, nil
 }
 
-func addEntityToBookmarkEvent(entitiesToAdd []models.Entity) error {
+func AddEntityToBookmarkEvent(entitiesToAdd []models.Entity) error {
 	if len(entitiesToAdd) == 0 {
 		return nil
 	}
@@ -271,7 +271,7 @@ func addEntityToBookmarkEvent(entitiesToAdd []models.Entity) error {
 	}
 
 	// to store these events you must call the store functions manually
-	for _, store := range relay.StoreEvent {
+	for _, store := range rly.StoreEvent {
 		store(context.TODO(), &evt)
 	}
 	metrics.KindBookmarkNotesCreated.Inc()
@@ -331,7 +331,7 @@ func updateEntityTimesInBookmarkEvent(updatedEntity models.Entity) error {
 					return err
 				}
 
-				for _, store := range relay.StoreEvent {
+				for _, store := range rly.StoreEvent {
 					store(context.TODO(), &evt)
 				}
 				metrics.KindBookmarkNotesCreated.Inc()
@@ -347,7 +347,7 @@ func updateEntityTimesInBookmarkEvent(updatedEntity models.Entity) error {
 	return nil
 }
 
-func deleteEntityInBookmarkEvent(pubKeyORfeedUrl string) error {
+func DeleteEntityInBookmarkEvent(pubKeyORfeedUrl string) error {
 	var bookMarkTags nostr.Tags
 	var rsslayEntity models.Entity
 
@@ -383,7 +383,7 @@ func deleteEntityInBookmarkEvent(pubKeyORfeedUrl string) error {
 					return err
 				}
 
-				for _, store := range relay.StoreEvent {
+				for _, store := range rly.StoreEvent {
 					store(context.TODO(), &evt)
 				}
 				metrics.KindBookmarkNotesCreated.Inc()
@@ -462,7 +462,7 @@ func GetSavedEntries() ([]models.GUIEntry, error) {
 	return localEntries, nil
 }
 
-func getSavedEntity(pubkeyHex string) (models.Entity, error) {
+func GetSavedEntity(pubkeyHex string) (models.Entity, error) {
 	var bookMarkTags nostr.Tags
 	var rsslayEntity models.Entity
 
@@ -494,7 +494,7 @@ func getSavedEntity(pubkeyHex string) (models.Entity, error) {
 	return models.Entity{}, nil
 }
 
-func getSavedEntities() ([]models.Entity, error) {
+func GetSavedEntities() ([]models.Entity, error) {
 	var bookMarkTags nostr.Tags
 	var rsslayEntity models.Entity
 
@@ -555,7 +555,7 @@ func deleteLocalEvents(filter nostr.Filter) error {
 			metrics.KindBookmarkNotesDeleted.Inc()
 		}
 
-		for _, del := range relay.DeleteEvent {
+		for _, del := range rly.DeleteEvent {
 			if err := del(ctx, evnt); err != nil {
 				log.Printf("[ERROR] %s deleting event %s", evnt, err)
 			}
@@ -566,7 +566,7 @@ func deleteLocalEvents(filter nostr.Filter) error {
 	return nil
 }
 
-func deleteOldKindTextNoteEvents() {
+func DeleteOldKindTextNoteEvents() {
 	if s.MaxNoteAgeDays < 1 {
 		log.Printf("[INFO] MaxAgeDays disabled")
 		return
@@ -619,7 +619,7 @@ func deleteOldKBookmarkEvents() {
 	}
 }
 
-func updateFollowListEvent(followAction models.FollowManagment) {
+func UpdateFollowListEvent(followAction models.FollowManagment) {
 	var currentOneHopNetwork []nostr.Tag
 
 	switch followAction.Action {
@@ -653,9 +653,9 @@ func updateFollowListEvent(followAction models.FollowManagment) {
 		return
 	}
 
-	relay.BroadcastEvent(&evtNewSubs)
+	rly.BroadcastEvent(&evtNewSubs)
 
-	for _, store := range relay.StoreEvent {
+	for _, store := range rly.StoreEvent {
 		if err := store(context.TODO(), &evtNewSubs); err != nil {
 			log.Printf("[ERROR] %s", err)
 		}
@@ -666,7 +666,7 @@ func updateFollowListEvent(followAction models.FollowManagment) {
 	log.Print("[DEBUG] 🫂 new follow list size: ", len(currentOneHopNetwork))
 }
 
-func blastEvent(ev *nostr.Event) {
+func BlastEvent(ev *nostr.Event) {
 	ctx := context.Background()
 	for _, url := range seedRelays {
 		ctx, cancel := context.WithTimeout(ctx, time.Second*5)

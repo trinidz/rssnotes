@@ -14,7 +14,7 @@ import (
 
 var (
 	db         = badger.BadgerBackend{}
-	relay      = khatru.NewRelay()
+	rly        = khatru.NewRelay()
 	pool       *nostr.SimplePool
 	seedRelays []string
 	s          config.C
@@ -32,11 +32,11 @@ func RelayInit(cfg config.C) {
 	}
 
 	//returned on the NIP-11 endpoint
-	relay.Info.Name = cfg.RelayName
-	relay.Info.PubKey = cfg.RelayPubkey
-	relay.Info.Description = cfg.RelayDescription
-	relay.Info.Contact = cfg.RelayContact
-	relay.Info.Icon = cfg.RelayIcon
+	rly.Info.Name = cfg.RelayName
+	rly.Info.PubKey = cfg.RelayPubkey
+	rly.Info.Description = cfg.RelayDescription
+	rly.Info.Contact = cfg.RelayContact
+	rly.Info.Icon = cfg.RelayIcon
 
 	db.Path = cfg.DatabasePath
 	//os.MkdirAll(db.Path, 0755)
@@ -44,18 +44,18 @@ func RelayInit(cfg config.C) {
 		log.Panicf("[FATAL] db init: %s", err)
 		return
 	}
-	defer db.Close()
+	//defer db.Close()
 
-	relay.StoreEvent = append(relay.StoreEvent, db.SaveEvent)
-	relay.QueryEvents = append(relay.QueryEvents, db.QueryEvents)
-	relay.CountEvents = append(relay.CountEvents, db.CountEvents)
-	relay.DeleteEvent = append(relay.DeleteEvent, db.DeleteEvent)
+	rly.StoreEvent = append(rly.StoreEvent, db.SaveEvent)
+	rly.QueryEvents = append(rly.QueryEvents, db.QueryEvents)
+	rly.CountEvents = append(rly.CountEvents, db.CountEvents)
+	rly.DeleteEvent = append(rly.DeleteEvent, db.DeleteEvent)
 
-	relay.RejectEvent = append(relay.RejectEvent,
+	rly.RejectEvent = append(rly.RejectEvent,
 		policyEventReadOnly,
 	)
 
-	relay.RejectFilter = append(relay.RejectFilter,
+	rly.RejectFilter = append(rly.RejectFilter,
 		policies.NoComplexFilters,
 		policyFilterBookmark,
 	)
