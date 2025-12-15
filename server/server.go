@@ -15,14 +15,14 @@ type Server struct {
 	// Feeds *rssfeeds.RssFeedStack
 }
 
-func NewServer(cfg config.C) *Server {
+func NewServer(cfg *config.C) *Server {
 	serverConfig := cfg
 	if serverConfig.RelayBasepath != "" {
 		serverConfig.RelayBasepath = "/" + strings.Trim(serverConfig.RelayBasepath, "/")
 	}
 
 	return &Server{
-		Cfg: &serverConfig,
+		Cfg: serverConfig,
 		//Feeds: rssfd,
 	}
 }

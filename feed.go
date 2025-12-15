@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"rssnotes/internal/helpers"
 	"rssnotes/internal/models"
 	"rssnotes/metrics"
 	"strings"
@@ -38,7 +39,7 @@ var (
 
 func parseFeedForUrl(url string) (*gofeed.Feed, error) {
 	//metrics.CacheMiss.Inc()
-	fp.RSSTranslator = NewCustomTranslator()
+	fp.RSSTranslator = helpers.NewCustomTranslator()
 	feed, err := fp.ParseURL(url)
 	if err != nil {
 		log.Print("[ERROR] ", err)
@@ -66,7 +67,7 @@ func parseFeedForPubkey(pubKey string, deleteFailingFeeds bool) (*gofeed.Feed, m
 		return nil, entity
 	}
 
-	if !IsValidHttpUrl(entity.URL) {
+	if !helpers.IsValidHttpUrl(entity.URL) {
 		log.Printf("[INFO] invalid url %q", entity.URL)
 		// if deleteFailingFeeds {
 		// }
@@ -165,7 +166,7 @@ func feedItemToNote(pubkey string, item *gofeed.Item, feed *gofeed.Feed, default
 	}
 
 	mdConverter := md.NewConverter("", true, nil)
-	mdConverter.AddRules(GetConverterRules()...)
+	mdConverter.AddRules(helpers.GetConverterRules()...)
 
 	description, err := mdConverter.ConvertString(item.Description)
 	if err != nil {
@@ -249,7 +250,7 @@ func checkAllFeeds() {
 		return
 	}
 	for _, currentEntity := range currentEntities {
-		if !TimetoUpdateFeed(currentEntity) {
+		if !helpers.TimetoUpdateFeed(currentEntity) {
 			//log.Printf("[DEBUG] not time to update %s. Time since last check: %d Avg post time: %d", currentEntity.URL, time.Now().Unix()-currentEntity.LastCheckedTime, currentEntity.AvgPostTime)
 			continue
 		}
@@ -296,7 +297,7 @@ func checkAllFeeds() {
 			PubKey:          entity.PubKey,
 			LastPostTime:    lastPostTime,
 			LastCheckedTime: time.Now().Unix(),
-			AvgPostTime:     CalcAvgPostTime(allPostTimes),
+			AvgPostTime:     helpers.CalcAvgPostTime(allPostTimes),
 		}); err != nil {
 			log.Printf("[ERROR] feed entity %s not updated", entity.URL)
 		} else {

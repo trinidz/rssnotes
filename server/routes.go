@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	main "rssnotes"
+	"path/filepath"
 
+	"rssnotes/internal/helpers"
 	"rssnotes/internal/models"
-
+	"rssnotes/internal/relays"
 	"rssnotes/internal/yarr/yarrworker"
 	"rssnotes/metrics"
 	"rssnotes/server/router"
@@ -48,6 +49,7 @@ func (s *Server) handler() http.Handler {
 
 	r.For("/", s.handleFrontpage)
 	//r.For("/static/*path", s.handleStatic)
+	r.For("/assets/*path", s.handleStatic)
 	r.For("/metricsDisplay", s.handleMetricsDisplay)
 	r.For("/log", s.handleLog)
 	r.For("/health", s.handleHealth)
@@ -57,7 +59,7 @@ func (s *Server) handler() http.Handler {
 
 func (s *Server) handleFrontpage(c *router.Context) {
 	metrics.IndexRequests.Inc()
-	items, err := models.GetSavedEntries()
+	items, err := relays.GetSavedEntries()
 	if err != nil {
 		log.Print("[ERROR] ", err)
 		http.Error(c.Out, err.Error(), http.StatusInternalServerError)
@@ -86,10 +88,10 @@ func (s *Server) handleFrontpage(c *router.Context) {
 		RelayURL:            s.Cfg.RelayURL,
 		Count:               len(items),
 		Entries:             items,
-		KindTextNoteCreated: getPrometheusMetric(metrics.KindTextNoteCreated.Desc()),
-		KindTextNoteDeleted: getPrometheusMetric(metrics.KindTextNoteDeleted.Desc()),
-		QueryEventsRequests: getPrometheusMetric(metrics.QueryEventsRequests.Desc()),
-		NotesBlasted:        getPrometheusMetric(metrics.NotesBlasted.Desc()),
+		KindTextNoteCreated: s.getPrometheusMetric(metrics.KindTextNoteCreated.Desc()),
+		KindTextNoteDeleted: s.getPrometheusMetric(metrics.KindTextNoteDeleted.Desc()),
+		QueryEventsRequests: s.getPrometheusMetric(metrics.QueryEventsRequests.Desc()),
+		NotesBlasted:        s.getPrometheusMetric(metrics.NotesBlasted.Desc()),
 	}
 
 	if err := tmpl.Execute(c.Out, data); err != nil {
@@ -98,8 +100,18 @@ func (s *Server) handleFrontpage(c *router.Context) {
 	}
 }
 
+func (s *Server) handleStatic(c *router.Context) {
+	// don't serve templates
+	dir, name := filepath.Split(c.Vars["path"])
+	if dir == "" && strings.HasSuffix(name, ".html") {
+		c.Out.WriteHeader(http.StatusNotFound)
+		return
+	}
+	http.StripPrefix(s.Cfg.RelayBasepath+"/assets/", http.FileServer(http.Dir(s.Cfg.StaticPath))).ServeHTTP(c.Out, c.Req)
+}
+
 func (s *Server) handleMetricsDisplay(c *router.Context) {
-	items, err := main.GetSavedEntries()
+	items, err := relays.GetSavedEntries()
 	if err != nil {
 		log.Print("[ERROR] ", err)
 		http.Error(c.Out, err.Error(), http.StatusInternalServerError)
@@ -112,10 +124,10 @@ func (s *Server) handleMetricsDisplay(c *router.Context) {
 		NotesBlasted        string
 	}{
 		Count:               len(items),
-		KindTextNoteCreated: getPrometheusMetric(metrics.KindTextNoteCreated.Desc()),
-		KindTextNoteDeleted: getPrometheusMetric(metrics.KindTextNoteDeleted.Desc()),
-		QueryEventsRequests: getPrometheusMetric(metrics.QueryEventsRequests.Desc()),
-		NotesBlasted:        getPrometheusMetric(metrics.NotesBlasted.Desc()),
+		KindTextNoteCreated: s.getPrometheusMetric(metrics.KindTextNoteCreated.Desc()),
+		KindTextNoteDeleted: s.getPrometheusMetric(metrics.KindTextNoteDeleted.Desc()),
+		QueryEventsRequests: s.getPrometheusMetric(metrics.QueryEventsRequests.Desc()),
+		NotesBlasted:        s.getPrometheusMetric(metrics.NotesBlasted.Desc()),
 	}
 
 	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/index.html", s.Cfg.TemplatePath)))
@@ -125,14 +137,14 @@ func (s *Server) handleMetricsDisplay(c *router.Context) {
 	}
 }
 
-func (s *Server) handleCreateFeed(w http.ResponseWriter, r *http.Request, secret *string) {
+func (s *Server) handleCreateFeed(c *router.Context, secret *string) {
 	metrics.CreateRequests.Inc()
-	entry := createFeed(r, secret)
+	entry := createFeed(c.Req, secret)
 
 	followAction := models.FollowManagment{
 		Action: models.Sync,
 	}
-	followManagmentCh <- followAction
+	models.followManagmentCh <- followAction
 
 	data := struct {
 		RelayName    string
@@ -155,10 +167,10 @@ func (s *Server) handleCreateFeed(w http.ResponseWriter, r *http.Request, secret
 	}
 
 	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/created.html", s.Cfg.TemplatePath)))
-	err := tmpl.Execute(w, data)
+	err := tmpl.Execute(c.Out, data)
 	if err != nil {
 		log.Print("[ERROR] ", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(c.Out, err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -252,9 +264,9 @@ func (s *Server) createFeed(r *http.Request, secret *string) *models.GUIEntry {
 	return &guientry
 }
 
-func handleDeleteFeed(w http.ResponseWriter, r *http.Request) {
+func handleDeleteFeed(c *router.Context) {
 	metrics.DeleteRequests.Inc()
-	feedPubkey := r.URL.Query().Get("pubkey")
+	feedPubkey := c.Req.URL.Query().Get("pubkey")
 
 	followAction := models.FollowManagment{
 		Action:       models.Delete,
@@ -267,25 +279,25 @@ func handleDeleteFeed(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tmpl := template.New("t")
-	tmpl.Execute(w, nil)
+	tmpl.Execute(c.Out, nil)
 }
 
-func (s *Server) handleImportOpml(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleImportOpml(c *router.Context) {
 	metrics.ImportRequests.Inc()
 	outputFileStatus := func(errMsg string) {
 		htmlStr := fmt.Sprintf("<div id='progress' name='progress-bar' class='progress-bar' style='--width: 100' data-label='%s...'></div>", errMsg)
 		tmplProg, _ := template.New("t").Parse(htmlStr)
-		tmplProg.Execute(w, nil)
+		tmplProg.Execute(c.Out, nil)
 	}
 
-	if err := r.ParseMultipartForm(10 << 20); err != nil {
+	if err := c.Req.ParseMultipartForm(10 << 20); err != nil {
 		errMsg := fmt.Sprintf("[ERROR] OPML parse form %s", err)
 		log.Print(errMsg)
 		outputFileStatus("[ERROR] OPML parse form")
 		return
 	}
 
-	file, _, err := r.FormFile("opml-file")
+	file, _, err := c.Req.FormFile("opml-file")
 	if err != nil {
 		errMsg := fmt.Sprintf("[ERROR] form OPML file: %s", err)
 		log.Print(errMsg)
@@ -323,7 +335,7 @@ func (s *Server) importFeeds(opmlUrls []opml.Outline, secret *string) []*models.
 	bookmarkEntities := make([]models.Entity, 0)
 
 	for urlIndex, urlParam := range opmlUrls {
-		if !IsValidHttpUrl(urlParam.XMLURL) {
+		if !helpers.IsValidHttpUrl(urlParam.XMLURL) {
 			importedEntries = append(importedEntries, &models.GUIEntry{
 				BookmarkEntity: models.Entity{URL: urlParam.XMLURL},
 				ErrorMessage:   "Invalid URL provided (must be in absolute format and with https or https scheme)...",
@@ -434,7 +446,7 @@ func (s *Server) importFeeds(opmlUrls []opml.Outline, secret *string) []*models.
 			ImageURL:        localImageURL,
 			LastPostTime:    lastPostTime,
 			LastCheckedTime: time.Now().Unix(),
-			AvgPostTime:     CalcAvgPostTime(allPostTimes),
+			AvgPostTime:     helpers.CalcAvgPostTime(allPostTimes),
 		})
 
 		importedEntries = append(importedEntries, &guiEntry)
@@ -454,22 +466,22 @@ func (s *Server) importFeeds(opmlUrls []opml.Outline, secret *string) []*models.
 	return importedEntries
 }
 
-func (s *Server) handleImportProgress(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleImportProgress(c *router.Context) {
 	importedURL := <-importProgressCh
 	progressPct := ((float32(importedURL.entryIndex) + 1.0) / float32(importedURL.totalEntries)) * 100.0
 
 	if importedURL.entryIndex+1 < importedURL.totalEntries {
 		htmlStr := fmt.Sprintf("<div class='navbar-item' id='status-area' hx-get='/progress' hx-target='this' hx-swap='outerHTML' hx-trigger='every 600ms'>Processing...%d of %d<div class='navbar-item'><div id='progress' name='progress-bar' class='progress-bar' style='--width: %f' data-label=''></div></div></div>", importedURL.entryIndex+1, importedURL.totalEntries, progressPct)
 		tmpl, _ := template.New("t").Parse(htmlStr)
-		tmpl.Execute(w, nil)
+		tmpl.Execute(c.Out, nil)
 	} else {
 		htmlStr := fmt.Sprintf("<div class='navbar-item' id='status-area' hx-get='/progress' hx-target='this' hx-swap='outerHTML' hx-trigger='change from:#opml-import-form' hx-sync='#opml-file: queue first'><a href='/'>Refresh</a>..or..<a href='/detail'>Details</a> <div class='navbar-item'><div id='progress' name='progress-bar' class='progress-bar' style='--width: %f' data-label='Import Complete...'></div></div></div>", progressPct)
 		tmpl, _ := template.New("t").Parse(htmlStr)
-		tmpl.Execute(w, nil)
+		tmpl.Execute(c.Out, nil)
 	}
 }
 
-func (s *Server) handleImportDetail(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleImportDetail(c *router.Context) {
 	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/imported.html", s.Cfg.TemplatePath)))
 
 	numBadFeeds := 0
@@ -497,14 +509,14 @@ func (s *Server) handleImportDetail(w http.ResponseWriter, r *http.Request) {
 		ErrorCode:    0,
 	}
 
-	if err := tmpl.Execute(w, results); err != nil {
+	if err := tmpl.Execute(c.Out, results); err != nil {
 		log.Print("[ERROR] ", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(c.Out, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
-func (s *Server) handleExportOpml(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleExportOpml(c *router.Context) {
 	var rssOMPL = &opml.OPML{
 		Version: "1.0",
 		Head: opml.Head{
@@ -532,17 +544,17 @@ func (s *Server) handleExportOpml(w http.ResponseWriter, r *http.Request) {
 	outp, err := rssOMPL.XML()
 	if err != nil {
 		log.Print("[ERROR] exporting opml file")
-		http.Redirect(w, r, r.Referer(), http.StatusSeeOther)
+		http.Redirect(c.Out, c.Req, c.Req.Referer(), http.StatusSeeOther)
 		return
 	}
 
-	fmt.Fprintf(w, "%s", outp)
+	fmt.Fprintf(c.Out, "%s", outp)
 }
 
-func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleSearch(c *router.Context) {
 	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/search.html", s.Cfg.TemplatePath)))
 	metrics.SearchRequests.Inc()
-	query := r.URL.Query().Get("query")
+	query := c.Req.URL.Query().Get("query")
 	if query == "" || len(query) <= 4 {
 
 		errorData := struct {
@@ -561,16 +573,16 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 			ErrorMessage:  "Please enter more than 5 characters to search!",
 		}
 
-		if err := tmpl.Execute(w, errorData); err != nil {
+		if err := tmpl.Execute(c.Out, errorData); err != nil {
 			log.Print("[ERROR] ", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(c.Out, err.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
 
 	savedEntries, err := getSavedEntries()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(c.Out, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -597,9 +609,9 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 		ErrorMessage:  "",
 	}
 
-	if err := tmpl.Execute(w, data); err != nil {
+	if err := tmpl.Execute(c.Out, data); err != nil {
 		log.Print("[ERROR] ", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(c.Out, err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -648,21 +660,21 @@ func updateRssNotesState() {
 	}
 }
 
-func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+func respondWithJSON(c *router.Context, code int, payload interface{}) {
 	data, err := json.Marshal(payload)
 	if err != nil {
 		log.Printf("Failed to marshal JSON response %v", payload)
-		w.WriteHeader(500)
+		c.Out.WriteHeader(500)
 		return
 	}
-	w.Header().Add("Content-Type", "application/json")
-	w.Header().Add("Access-Control-Allow-Origin", "*")
-	w.WriteHeader(code)
-	w.Write(data)
+	c.Out.Header().Add("Content-Type", "application/json")
+	c.Out.Header().Add("Access-Control-Allow-Origin", "*")
+	c.Out.WriteHeader(code)
+	c.Out.Write(data)
 }
 
-func getPrometheusMetric(promParam *prometheus.Desc) string {
-	url := fmt.Sprintf("http://localhost:%s/metrics", s.Port)
+func (s *Server) getPrometheusMetric(promParam *prometheus.Desc) string {
+	url := fmt.Sprintf("http://localhost:%s/metrics", s.Cfg.Port)
 
 	resp, err := client.Get(url)
 	if err != nil {
@@ -693,7 +705,7 @@ func getPrometheusMetric(promParam *prometheus.Desc) string {
 				log.Print("[ERROR]", err)
 				return "?"
 			}
-			return nearestThousandFormat(float64(countInt64))
+			return helpers.NearestThousandFormat(float64(countInt64))
 		}
 	}
 	return "?"
