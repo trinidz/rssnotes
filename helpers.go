@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"rssnotes/internal/models"
 	"slices"
 	"sort"
 	"strings"
@@ -175,6 +176,6 @@ func CalcAvgPostTime(feedPostTimes []int64) int64 {
 	return avgposttimesecs
 }
 
-func TimetoUpdateFeed(rssfeed Entity) bool {
+func TimetoUpdateFeed(rssfeed models.Entity) bool {
 	return time.Now().Unix()-rssfeed.LastCheckedTime >= rssfeed.AvgPostTime
 }

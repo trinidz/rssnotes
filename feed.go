@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"rssnotes/internal/models"
 	"rssnotes/metrics"
 	"strings"
 	"time"
@@ -55,7 +56,7 @@ func parseFeedForUrl(url string) (*gofeed.Feed, error) {
 	return feed, nil
 }
 
-func parseFeedForPubkey(pubKey string, deleteFailingFeeds bool) (*gofeed.Feed, Entity) {
+func parseFeedForPubkey(pubKey string, deleteFailingFeeds bool) (*gofeed.Feed, models.Entity) {
 	pubKey = strings.TrimSpace(pubKey)
 
 	entity, err := getSavedEntity(pubKey)
@@ -291,7 +292,7 @@ func checkAllFeeds() {
 			allPostTimes = append(allPostTimes, evt.CreatedAt.Time().Unix())
 		}
 
-		if err := updateEntityTimesInBookmarkEvent(Entity{
+		if err := updateEntityTimesInBookmarkEvent(models.Entity{
 			PubKey:          entity.PubKey,
 			LastPostTime:    lastPostTime,
 			LastCheckedTime: time.Now().Unix(),

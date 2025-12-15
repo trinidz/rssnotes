@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	htmlutil "rssnotes/yarrhtmlutil"
+	htmlutil "rssnotes/internal/yarr/yarrhtmlutil"
 
 	"golang.org/x/net/html/charset"
 )

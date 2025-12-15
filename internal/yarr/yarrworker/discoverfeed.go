@@ -8,8 +8,8 @@ import (
 	"mime"
 	"net/http"
 
-	"rssnotes/yarrparser"
-	"rssnotes/yarrscraper"
+	"rssnotes/internal/yarr/yarrparser"
+	"rssnotes/internal/yarr/yarrscraper"
 
 	"golang.org/x/net/html/charset"
 )

@@ -3,7 +3,7 @@ package yarrscraper
 import (
 	"strings"
 
-	htmlutil "rssnotes/yarrhtmlutil"
+	htmlutil "rssnotes/internal/yarr/yarrhtmlutil"
 
 	"golang.org/x/net/html"
 )

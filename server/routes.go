@@ -1,12 +1,16 @@
-package main
+package server
 
 import (
 	"fmt"
 	"io"
 	"net/http"
+	main "rssnotes"
+
 	"rssnotes/internal/models"
+
+	"rssnotes/internal/yarr/yarrworker"
 	"rssnotes/metrics"
-	"rssnotes/yarrworker"
+	"rssnotes/server/router"
 	"strconv"
 	"strings"
 	"text/template"
@@ -26,16 +30,41 @@ var (
 	recentImportedEntries []*models.GUIEntry
 )
 
-func handleFrontpage(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) handler() http.Handler {
+	r := router.NewRouter(s.Cfg.RelayBasepath)
+
+	// r.Use(gzip.Middleware)
+
+	// if s.Username != "" && s.Password != "" {
+	// 	a := &auth.Middleware{
+	// 		BasePath: s.BasePath,
+	// 		Username: s.Username,
+	// 		Password: s.Password,
+	// 		Public:   []string{"/static", "/fever"},
+	// 		DB:       s.db,
+	// 	}
+	// 	r.Use(a.Handler)
+	// }
+
+	r.For("/", s.handleFrontpage)
+	//r.For("/static/*path", s.handleStatic)
+	r.For("/metricsDisplay", s.handleMetricsDisplay)
+	r.For("/log", s.handleLog)
+	r.For("/health", s.handleHealth)
+
+	return r
+}
+
+func (s *Server) handleFrontpage(c *router.Context) {
 	metrics.IndexRequests.Inc()
-	items, err := GetSavedEntries()
+	items, err := models.GetSavedEntries()
 	if err != nil {
 		log.Print("[ERROR] ", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(c.Out, err.Error(), http.StatusInternalServerError)
 	}
 
-	npub, _ := nip19.EncodePublicKey(s.RelayPubkey)
-	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/index.html", s.TemplatePath)))
+	npub, _ := nip19.EncodePublicKey(s.Cfg.RelayPubkey)
+	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/index.html", s.Cfg.TemplatePath)))
 
 	data := struct {
 		RelayName           string
@@ -50,11 +79,11 @@ func handleFrontpage(w http.ResponseWriter, _ *http.Request) {
 		QueryEventsRequests string
 		NotesBlasted        string
 	}{
-		RelayName:           s.RelayName,
-		RelayPubkey:         s.RelayPubkey,
+		RelayName:           s.Cfg.RelayName,
+		RelayPubkey:         s.Cfg.RelayPubkey,
 		RelayNPubkey:        npub,
-		RelayDescription:    s.RelayDescription,
-		RelayURL:            s.RelayURL,
+		RelayDescription:    s.Cfg.RelayDescription,
+		RelayURL:            s.Cfg.RelayURL,
 		Count:               len(items),
 		Entries:             items,
 		KindTextNoteCreated: getPrometheusMetric(metrics.KindTextNoteCreated.Desc()),
@@ -63,17 +92,17 @@ func handleFrontpage(w http.ResponseWriter, _ *http.Request) {
 		NotesBlasted:        getPrometheusMetric(metrics.NotesBlasted.Desc()),
 	}
 
-	if err := tmpl.Execute(w, data); err != nil {
+	if err := tmpl.Execute(c.Out, data); err != nil {
 		log.Print("[ERROR] ", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(c.Out, err.Error(), http.StatusInternalServerError)
 	}
 }
 
-func handleMetricsDisplay(w http.ResponseWriter, _ *http.Request) {
-	items, err := GetSavedEntries()
+func (s *Server) handleMetricsDisplay(c *router.Context) {
+	items, err := main.GetSavedEntries()
 	if err != nil {
 		log.Print("[ERROR] ", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(c.Out, err.Error(), http.StatusInternalServerError)
 	}
 	data := struct {
 		Count               int
@@ -89,14 +118,14 @@ func handleMetricsDisplay(w http.ResponseWriter, _ *http.Request) {
 		NotesBlasted:        getPrometheusMetric(metrics.NotesBlasted.Desc()),
 	}
 
-	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/index.html", s.TemplatePath)))
-	if err := tmpl.ExecuteTemplate(w, "metrics-display-fragment", data); err != nil {
+	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/index.html", s.Cfg.TemplatePath)))
+	if err := tmpl.ExecuteTemplate(c.Out, "metrics-display-fragment", data); err != nil {
 		log.Print("[ERROR] ", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(c.Out, err.Error(), http.StatusInternalServerError)
 	}
 }
 
-func handleCreateFeed(w http.ResponseWriter, r *http.Request, secret *string) {
+func (s *Server) handleCreateFeed(w http.ResponseWriter, r *http.Request, secret *string) {
 	metrics.CreateRequests.Inc()
 	entry := createFeed(r, secret)
 
@@ -115,7 +144,7 @@ func handleCreateFeed(w http.ResponseWriter, r *http.Request, secret *string) {
 		Error        bool
 		ErrorMessage string
 	}{
-		RelayName:    s.RelayName,
+		RelayName:    s.Cfg.RelayName,
 		PubKey:       entry.BookmarkEntity.PubKey,
 		NPubKey:      entry.NPubKey,
 		Url:          entry.BookmarkEntity.URL,
@@ -125,7 +154,7 @@ func handleCreateFeed(w http.ResponseWriter, r *http.Request, secret *string) {
 		ErrorMessage: entry.ErrorMessage,
 	}
 
-	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/created.html", s.TemplatePath)))
+	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/created.html", s.Cfg.TemplatePath)))
 	err := tmpl.Execute(w, data)
 	if err != nil {
 		log.Print("[ERROR] ", err)
@@ -133,7 +162,7 @@ func handleCreateFeed(w http.ResponseWriter, r *http.Request, secret *string) {
 	}
 }
 
-func createFeed(r *http.Request, secret *string) *models.GUIEntry {
+func (s *Server) createFeed(r *http.Request, secret *string) *models.GUIEntry {
 	urlParam := r.URL.Query().Get("url")
 
 	guientry := models.GUIEntry{
@@ -186,7 +215,7 @@ func createFeed(r *http.Request, secret *string) *models.GUIEntry {
 	guientry.BookmarkEntity.URL = feedUrl
 	guientry.BookmarkEntity.PubKey = publicKey
 	guientry.NPubKey, _ = nip19.EncodePublicKey(publicKey)
-	guientry.BookmarkEntity.ImageURL = s.DefaultProfilePicUrl
+	guientry.BookmarkEntity.ImageURL = s.Cfg.DefaultProfilePicUrl
 
 	faviconUrl, err := yarrworker.FindFaviconURL(parsedFeed.Link, feedUrl)
 	if err != nil {
@@ -216,7 +245,7 @@ func createFeed(r *http.Request, secret *string) *models.GUIEntry {
 		log.Printf("[ERROR] feed entity %s not added to bookmark", feedUrl)
 	}
 
-	if err := qrcode.WriteFile(fmt.Sprintf("nostr:%s", guientry.NPubKey), qrcode.Low, 128, fmt.Sprintf("%s/%s.png", s.QRCodePath, guientry.NPubKey)); err != nil {
+	if err := qrcode.WriteFile(fmt.Sprintf("nostr:%s", guientry.NPubKey), qrcode.Low, 128, fmt.Sprintf("%s/%s.png", s.Cfg.QRCodePath, guientry.NPubKey)); err != nil {
 		log.Print("[ERROR]", err)
 	}
 
@@ -241,7 +270,7 @@ func handleDeleteFeed(w http.ResponseWriter, r *http.Request) {
 	tmpl.Execute(w, nil)
 }
 
-func handleImportOpml(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleImportOpml(w http.ResponseWriter, r *http.Request) {
 	metrics.ImportRequests.Inc()
 	outputFileStatus := func(errMsg string) {
 		htmlStr := fmt.Sprintf("<div id='progress' name='progress-bar' class='progress-bar' style='--width: 100' data-label='%s...'></div>", errMsg)
@@ -282,14 +311,14 @@ func handleImportOpml(w http.ResponseWriter, r *http.Request) {
 	}
 
 	go func() {
-		recentImportedEntries = importFeeds(doc.Body.Outlines, &s.RandomSecret)
+		recentImportedEntries = importFeeds(doc.Body.Outlines, &s.Cfg.RandomSecret)
 	}()
 
 	log.Print("[DEBUG] opml import started.")
 	outputFileStatus("OPML import starting")
 }
 
-func importFeeds(opmlUrls []opml.Outline, secret *string) []*models.GUIEntry {
+func (s *Server) importFeeds(opmlUrls []opml.Outline, secret *string) []*models.GUIEntry {
 	importedEntries := make([]*models.GUIEntry, 0)
 	bookmarkEntities := make([]models.Entity, 0)
 
@@ -339,7 +368,7 @@ func importFeeds(opmlUrls []opml.Outline, secret *string) []*models.GUIEntry {
 		feedExists, err := feedExists(publicKey, sk, feedUrl)
 		if feedExists {
 			importedEntries = append(importedEntries, &models.GUIEntry{
-				BookmarkEntity: models.Entity{URL: urlParam.XMLURL},
+				BookmarkEntity: Entity{URL: urlParam.XMLURL},
 				ErrorMessage:   "Feed already exists",
 				Error:          true,
 				ErrorCode:      http.StatusBadRequest,
@@ -385,7 +414,7 @@ func importFeeds(opmlUrls []opml.Outline, secret *string) []*models.GUIEntry {
 			log.Print("[ERROR] ", err)
 		}
 
-		localImageURL := s.DefaultProfilePicUrl
+		localImageURL := s.Cfg.DefaultProfilePicUrl
 		faviconUrl, err := yarrworker.FindFaviconURL(parsedFeed.Link, feedUrl)
 		if err != nil {
 			log.Print("[ERROR] FindFavicon", err)
@@ -418,14 +447,14 @@ func importFeeds(opmlUrls []opml.Outline, secret *string) []*models.GUIEntry {
 
 	//update kind 3 event
 	followAction := models.FollowManagment{
-		Action: models.Sync,
+		Action: Sync,
 	}
 	followManagmentCh <- followAction
 
 	return importedEntries
 }
 
-func handleImportProgress(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleImportProgress(w http.ResponseWriter, r *http.Request) {
 	importedURL := <-importProgressCh
 	progressPct := ((float32(importedURL.entryIndex) + 1.0) / float32(importedURL.totalEntries)) * 100.0
 
@@ -440,8 +469,8 @@ func handleImportProgress(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleImportDetail(w http.ResponseWriter, r *http.Request) {
-	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/imported.html", s.TemplatePath)))
+func (s *Server) handleImportDetail(w http.ResponseWriter, r *http.Request) {
+	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/imported.html", s.Cfg.TemplatePath)))
 
 	numBadFeeds := 0
 	for _, feed := range recentImportedEntries {
@@ -459,7 +488,7 @@ func handleImportDetail(w http.ResponseWriter, r *http.Request) {
 		ErrorMessage string
 		ErrorCode    int
 	}{
-		RelayName:    s.RelayName,
+		RelayName:    s.Cfg.RelayName,
 		Feeds:        recentImportedEntries,
 		GoodFeeds:    len(recentImportedEntries) - numBadFeeds,
 		BadFeeds:     numBadFeeds,
@@ -475,7 +504,7 @@ func handleImportDetail(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleExportOpml(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleExportOpml(w http.ResponseWriter, r *http.Request) {
 	var rssOMPL = &opml.OPML{
 		Version: "1.0",
 		Head: opml.Head{
@@ -510,8 +539,8 @@ func handleExportOpml(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "%s", outp)
 }
 
-func handleSearch(w http.ResponseWriter, r *http.Request) {
-	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/search.html", s.TemplatePath)))
+func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
+	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/search.html", s.Cfg.TemplatePath)))
 	metrics.SearchRequests.Inc()
 	query := r.URL.Query().Get("query")
 	if query == "" || len(query) <= 4 {
@@ -524,7 +553,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 			Error         bool
 			ErrorMessage  string
 		}{
-			RelayName:     s.RelayName,
+			RelayName:     s.Cfg.RelayName,
 			Count:         0,
 			FilteredCount: 0,
 			Entries:       nil,
@@ -539,7 +568,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	savedEntries, err := GetSavedEntries()
+	savedEntries, err := getSavedEntries()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -560,7 +589,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		Error         bool
 		ErrorMessage  string
 	}{
-		RelayName:     s.RelayName,
+		RelayName:     s.Cfg.RelayName,
 		Count:         uint64(len(savedEntries)),
 		FilteredCount: uint64(len(items)),
 		Entries:       items,
@@ -574,7 +603,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleHealth(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) handleHealth(c *router.Context) {
 	data := struct {
 		RelayName        string
 		RelayPubkey      string
@@ -582,20 +611,20 @@ func handleHealth(w http.ResponseWriter, _ *http.Request) {
 		RelayURL         string
 		Version          string
 	}{
-		RelayName:        s.RelayName,
-		RelayPubkey:      s.RelayPubkey,
-		RelayDescription: s.RelayDescription,
-		RelayURL:         s.RelayURL,
-		Version:          s.Version,
+		RelayName:        s.Cfg.RelayName,
+		RelayPubkey:      s.Cfg.RelayPubkey,
+		RelayDescription: s.Cfg.RelayDescription,
+		RelayURL:         s.Cfg.RelayURL,
+		Version:          s.Cfg.Version,
 	}
 
-	respondWithJSON(w, 200, data)
+	respondWithJSON(c.Out, 200, data)
 }
 
-func handleLog(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("content-type", "application/opml")
-	w.Header().Add("content-disposition", "attachment; filename="+time.Now().Format(time.DateOnly)+"-rssnotes.log")
-	http.ServeFile(w, r, s.LogfilePath)
+func (s *Server) handleLog(c *router.Context) {
+	c.Out.Header().Add("content-type", "application/opml")
+	c.Out.Header().Add("content-disposition", "attachment; filename="+time.Now().Format(time.DateOnly)+"-rssnotes.log")
+	http.ServeFile(c.Out, c.Req, s.Cfg.LogfilePath)
 }
 
 func updateRssNotesState() {

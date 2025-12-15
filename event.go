@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"rssnotes/internal/models"
 	"rssnotes/metrics"
 	"sort"
 	"strings"
@@ -48,7 +49,7 @@ func getLocalEvents(localFilter nostr.Filter) ([]*nostr.Event, error) {
 }
 
 // get kind-0 metadata event of a pubkey
-func getLocalMetadataEvent(pubkey string) (KindProfileMetadata, nostr.Event, error) {
+func getLocalMetadataEvent(pubkey string) (models.KindProfileMetadata, nostr.Event, error) {
 
 	metaDataFilter := nostr.Filter{
 		Kinds:   []int{nostr.KindProfileMetadata},
@@ -58,18 +59,18 @@ func getLocalMetadataEvent(pubkey string) (KindProfileMetadata, nostr.Event, err
 	metaData, err := getLocalEvents(metaDataFilter)
 	if err != nil {
 		log.Print("[ERROR]", err)
-		return KindProfileMetadata{}, nostr.Event{}, err
+		return models.KindProfileMetadata{}, nostr.Event{}, err
 	}
 
 	if len(metaData) == 0 {
 		log.Printf("[DEBUG] no profile data found for pubkey %s", pubkey)
-		return KindProfileMetadata{}, nostr.Event{}, nil
+		return models.KindProfileMetadata{}, nostr.Event{}, nil
 	}
 
-	profileData := KindProfileMetadata{}
+	profileData := models.KindProfileMetadata{}
 	if err := json.Unmarshal([]byte(metaData[0].Content), &profileData); err != nil {
 		log.Print("[ERROR]", err)
-		return KindProfileMetadata{}, nostr.Event{}, err
+		return models.KindProfileMetadata{}, nostr.Event{}, err
 	}
 
 	return profileData, *metaData[0], nil
@@ -226,7 +227,7 @@ func feedExists(pubkeyHex, privKeyHex, feedUrl string) (bool, error) {
 	return false, nil
 }
 
-func addEntityToBookmarkEvent(entitiesToAdd []Entity) error {
+func addEntityToBookmarkEvent(entitiesToAdd []models.Entity) error {
 	if len(entitiesToAdd) == 0 {
 		return nil
 	}
@@ -280,9 +281,9 @@ func addEntityToBookmarkEvent(entitiesToAdd []Entity) error {
 }
 
 // update entity time properties
-func updateEntityTimesInBookmarkEvent(updatedEntity Entity) error {
+func updateEntityTimesInBookmarkEvent(updatedEntity models.Entity) error {
 	var bookMarkTags nostr.Tags
-	var rssnotesEntity Entity
+	var rssnotesEntity models.Entity
 
 	var bookmarkFilter nostr.Filter = nostr.Filter{
 		Kinds:   []int{KIND_BOOKMARKS},
@@ -348,7 +349,7 @@ func updateEntityTimesInBookmarkEvent(updatedEntity Entity) error {
 
 func deleteEntityInBookmarkEvent(pubKeyORfeedUrl string) error {
 	var bookMarkTags nostr.Tags
-	var rsslayEntity Entity
+	var rsslayEntity models.Entity
 
 	var bookmarkFilter nostr.Filter = nostr.Filter{
 		Kinds:   []int{KIND_BOOKMARKS},
@@ -420,10 +421,10 @@ func deleteEntityInBookmarkEvent(pubKeyORfeedUrl string) error {
 	return nil
 }
 
-func getSavedEntries() ([]GUIEntry, error) {
+func GetSavedEntries() ([]models.GUIEntry, error) {
 
 	var bookMarkTags nostr.Tags
-	var rsslayEntity Entity
+	var rsslayEntity models.Entity
 
 	var bookmarkFilter nostr.Filter = nostr.Filter{
 		Kinds:   []int{KIND_BOOKMARKS},
@@ -433,10 +434,10 @@ func getSavedEntries() ([]GUIEntry, error) {
 	bookMarkEvts, err := getLocalEvents(bookmarkFilter)
 	if err != nil {
 		log.Printf("[ERROR] GetLocalEvent %s", err)
-		return []GUIEntry{}, err
+		return []models.GUIEntry{}, err
 	}
 
-	localEntries := make([]GUIEntry, 0)
+	localEntries := make([]models.GUIEntry, 0)
 	if len(bookMarkEvts) > 0 {
 		bookMarkTags = bookMarkEvts[0].Tags.GetAll([]string{s.RsslayTagKey})
 		for _, tag := range bookMarkTags {
@@ -446,8 +447,8 @@ func getSavedEntries() ([]GUIEntry, error) {
 			}
 
 			npub, _ := nip19.EncodePublicKey(rsslayEntity.PubKey)
-			localEntries = append(localEntries, GUIEntry{
-				BookmarkEntity: Entity{
+			localEntries = append(localEntries, models.GUIEntry{
+				BookmarkEntity: models.Entity{
 					PubKey:       rsslayEntity.PubKey,
 					URL:          rsslayEntity.URL,
 					ImageURL:     rsslayEntity.ImageURL,
@@ -461,9 +462,9 @@ func getSavedEntries() ([]GUIEntry, error) {
 	return localEntries, nil
 }
 
-func getSavedEntity(pubkeyHex string) (Entity, error) {
+func getSavedEntity(pubkeyHex string) (models.Entity, error) {
 	var bookMarkTags nostr.Tags
-	var rsslayEntity Entity
+	var rsslayEntity models.Entity
 
 	var bookmarkFilter nostr.Filter = nostr.Filter{
 		Kinds:   []int{KIND_BOOKMARKS},
@@ -473,7 +474,7 @@ func getSavedEntity(pubkeyHex string) (Entity, error) {
 	bookMarkEvts, err := getLocalEvents(bookmarkFilter)
 	if err != nil {
 		log.Printf("[ERROR] GetLocalEvent %s", err)
-		return Entity{}, err
+		return models.Entity{}, err
 	}
 
 	if len(bookMarkEvts) > 0 {
@@ -482,7 +483,7 @@ func getSavedEntity(pubkeyHex string) (Entity, error) {
 			if strings.Contains(tag.Value(), pubkeyHex) {
 				if err := json.Unmarshal([]byte(tag.Value()), &rsslayEntity); err != nil {
 					log.Printf("[ERROR] %s", err)
-					return Entity{}, err
+					return models.Entity{}, err
 				}
 				return rsslayEntity, nil
 			}
@@ -490,12 +491,12 @@ func getSavedEntity(pubkeyHex string) (Entity, error) {
 	}
 
 	log.Printf("[DEBUG] feed entity not found")
-	return Entity{}, nil
+	return models.Entity{}, nil
 }
 
-func getSavedEntities() ([]Entity, error) {
+func getSavedEntities() ([]models.Entity, error) {
 	var bookMarkTags nostr.Tags
-	var rsslayEntity Entity
+	var rsslayEntity models.Entity
 
 	var bookmarkFilter nostr.Filter = nostr.Filter{
 		Kinds:   []int{KIND_BOOKMARKS},
@@ -505,10 +506,10 @@ func getSavedEntities() ([]Entity, error) {
 	bookMarkEvts, err := getLocalEvents(bookmarkFilter)
 	if err != nil {
 		log.Printf("[ERROR] GetLocalEvent %s", err)
-		return []Entity{}, err
+		return []models.Entity{}, err
 	}
 
-	var entities = make([]Entity, 0)
+	var entities = make([]models.Entity, 0)
 	if len(bookMarkEvts) > 0 {
 		bookMarkTags = bookMarkEvts[0].Tags.GetAll([]string{s.RsslayTagKey})
 		for _, tag := range bookMarkTags {
@@ -618,19 +619,19 @@ func deleteOldKBookmarkEvents() {
 	}
 }
 
-func updateFollowListEvent(followAction FollowManagment) {
+func updateFollowListEvent(followAction models.FollowManagment) {
 	var currentOneHopNetwork []nostr.Tag
 
 	switch followAction.Action {
-	case Add:
+	case models.Add:
 		remoteFollows := getRemoteFollows(s.RelayPubkey)
 		localFollows := getLocalFollows()
 		uniqueFollows := getUniqueFollows(remoteFollows, localFollows)
 		currentOneHopNetwork = append(currentOneHopNetwork, uniqueFollows...)
-	case Sync:
+	case models.Sync:
 		localFollows := getLocalFollows()
 		currentOneHopNetwork = append(currentOneHopNetwork, localFollows...)
-	case Delete:
+	case models.Delete:
 		//reducedFollows := deleteRemoteFollow(followAction.FollowEntity.PublicKey)
 		reducedFollows := deleteLocalFollow(followAction.FollowEntity.PubKey)
 		if reducedFollows != nil {
