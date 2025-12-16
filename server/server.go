@@ -23,18 +23,16 @@ var (
 )
 
 type Server struct {
-	addr string
-	Cfg  *config.C
+	Cfg *config.C
 	// Feeds *rssfeeds.RssFeedStack
 }
 
 func NewServer(cfg config.C) *Server {
-	serverConfig := cfg
-	if serverConfig.RelayBasepath != "" {
-		serverConfig.RelayBasepath = "/" + strings.Trim(serverConfig.RelayBasepath, "/")
+	if cfg.RelayBasepath != "" {
+		cfg.RelayBasepath = "/" + strings.Trim(cfg.RelayBasepath, "/")
 	}
 
-	relays.RelayInit(serverConfig)
+	relays.InitRelay(cfg)
 
 	tickerUpdateFeeds = time.NewTicker(time.Duration(cfg.FeedItemsRefreshMinutes) * time.Minute)
 	tickerDeleteOldNotes = time.NewTicker(time.Duration(24) * time.Hour)
@@ -42,7 +40,7 @@ func NewServer(cfg config.C) *Server {
 	go updateRssNotesState()
 
 	return &Server{
-		Cfg: &serverConfig,
+		Cfg: &cfg,
 	}
 }
 

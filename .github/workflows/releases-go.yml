@@ -34,13 +34,19 @@ jobs:
           - goarch: riscv64
             goos: darwin
     steps:
+      - name: Get current date
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
       - uses: actions/checkout@v3
       - uses: wangyoucao577/go-release-action@v1.40
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
-          ldflags: -X main.version=${{ github.ref_name }}
+          ldflags: |
+            -X internal/config.Version=${{ github.ref }}
+            -X internal/config.GitHash=${{ github.sha }}
+            -X internal/config.ReleaseDate=${{ steps.date.outputs.date }}
           overwrite: true
           md5sum: false
           sha256sum: false

@@ -23,13 +23,12 @@ import (
 	"github.com/nbd-wtf/go-nostr"
 )
 
-var (
-	fp = gofeed.NewParser()
-)
-
 func ParseFeedForUrl(url string) (*gofeed.Feed, error) {
 	//metrics.CacheMiss.Inc()
+
+	fp := gofeed.NewParser()
 	fp.RSSTranslator = helpers.NewCustomTranslator()
+
 	feed, err := fp.ParseURL(url)
 	if err != nil {
 		log.Print("[ERROR] ", err)

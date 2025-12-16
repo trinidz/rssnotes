@@ -13,8 +13,17 @@ RUN touch logfile.log
 
 COPY . .
 
+ARG APP_VERSION
+ENV APP_VERSION=${APP_VERSION:-v0.0.0}
+ARG GIT_HASH
+ENV GIT_HASH=${GIT_HASH:-000}
+ARG RELEASE_DATE
+ENV RELEASE_DATE=${RELEASE_DATE:-000}
+
 # Build the go binary
-RUN go build -o rssnotes .
+#RUN go build -o rssnotes .
+RUN go build -ldflags="-s -w -linkmode external -extldflags '-static' -X 'rssnotes/internal/config.Version=$APP_VERSION' -X 'rssnotes/internal/config.GitHash=$GIT_HASH' -X 'rssnotes/internal/config.ReleaseDate=$RELEASE_DATE'" -o rssnotes .
+
 
 # Stage 2: Create a image to run the Go application
 FROM alpine:latest

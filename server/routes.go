@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"rssnotes/internal/config"
 	"rssnotes/internal/helpers"
 	"rssnotes/internal/models"
 	"rssnotes/internal/relays"
@@ -37,21 +38,6 @@ var (
 func (s *Server) handler() http.Handler {
 	r := router.NewRouter(s.Cfg.RelayBasepath)
 
-	// r.Use(gzip.Middleware)
-
-	// if s.Username != "" && s.Password != "" {
-	// 	a := &auth.Middleware{
-	// 		BasePath: s.BasePath,
-	// 		Username: s.Username,
-	// 		Password: s.Password,
-	// 		Public:   []string{"/static", "/fever"},
-	// 		DB:       s.db,
-	// 	}
-	// 	r.Use(a.Handler)
-	// }
-
-	r.For("/", s.handleFrontpage)
-	//r.For("/static/*path", s.handleStatic)
 	r.For("/assets/*path", s.handleStatic)
 	r.For("/create", (func(c *router.Context) {
 		s.handleCreateFeed(c, &s.Cfg.RandomSecret)
@@ -68,6 +54,7 @@ func (s *Server) handler() http.Handler {
 	r.For("/metricsDisplay", s.handleMetricsDisplay)
 	r.For("/log", s.handleLog)
 	r.For("/health", s.handleHealth)
+	r.For("/", s.handleFrontpage)
 
 	return r
 }
@@ -95,18 +82,20 @@ func (s *Server) handleFrontpage(c *router.Context) {
 		KindTextNoteDeleted string
 		QueryEventsRequests string
 		NotesBlasted        string
+		Version             string
 	}{
 		RelayName:           s.Cfg.RelayName,
 		RelayPubkey:         s.Cfg.RelayPubkey,
 		RelayNPubkey:        npub,
 		RelayDescription:    s.Cfg.RelayDescription,
-		RelayURL:            s.Cfg.RelayURL,
+		RelayURL:            s.GetAddr().Host,
 		Count:               len(items),
 		Entries:             items,
 		KindTextNoteCreated: s.getPrometheusMetric(metrics.KindTextNoteCreated.Desc()),
 		KindTextNoteDeleted: s.getPrometheusMetric(metrics.KindTextNoteDeleted.Desc()),
 		QueryEventsRequests: s.getPrometheusMetric(metrics.QueryEventsRequests.Desc()),
 		NotesBlasted:        s.getPrometheusMetric(metrics.NotesBlasted.Desc()),
+		Version:             config.Version,
 	}
 
 	if err := tmpl.Execute(c.Out, data); err != nil {
@@ -637,12 +626,16 @@ func (s *Server) handleHealth(c *router.Context) {
 		RelayDescription string
 		RelayURL         string
 		Version          string
+		GitHash          string
+		ReleaseDate      string
 	}{
 		RelayName:        s.Cfg.RelayName,
 		RelayPubkey:      s.Cfg.RelayPubkey,
 		RelayDescription: s.Cfg.RelayDescription,
 		RelayURL:         s.Cfg.RelayURL,
-		Version:          s.Cfg.Version,
+		Version:          config.Version,
+		GitHash:          config.GitHash,
+		ReleaseDate:      config.ReleaseDate,
 	}
 
 	respondWithJSON(c, 200, data)

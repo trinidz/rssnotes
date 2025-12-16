@@ -26,7 +26,7 @@ var (
 	s          config.C
 )
 
-func RelayInit(cfg config.C) {
+func InitRelay(cfg config.C) {
 	s = cfg
 	ctx := context.Background()
 	pool = nostr.NewSimplePool(ctx)
@@ -80,5 +80,4 @@ func RelayInit(cfg config.C) {
 			log.Print("[ERROR] creating relay QR code", err)
 		}
 	}
-
 }
