@@ -43,7 +43,6 @@ func NewServer(cfg config.C) *Server {
 
 	return &Server{
 		Cfg: &serverConfig,
-		//Feeds: rssfd,
 	}
 }
 
@@ -64,10 +63,6 @@ func (s *Server) GetAddr() *url.URL {
 	//log.Printf("[DEBUG] public url %s", u.Scheme+"://"+u.Host+u.Path)
 	return u
 }
-
-// func (s *Server) Start() http.Handler {
-// 	s.Serve().ServeHTTP(w, r)
-// }
 
 func updateRssNotesState() {
 	for {

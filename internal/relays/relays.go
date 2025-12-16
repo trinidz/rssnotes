@@ -2,14 +2,20 @@ package relays
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log"
+	"os"
 	"rssnotes/internal/config"
 	"rssnotes/internal/helpers"
 
 	"github.com/fiatjaf/eventstore/badger"
 	"github.com/fiatjaf/khatru"
 	"github.com/fiatjaf/khatru/policies"
+	"github.com/mmcdole/gofeed"
 	"github.com/nbd-wtf/go-nostr"
+	"github.com/nbd-wtf/go-nostr/nip19"
+	"github.com/skip2/go-qrcode"
 )
 
 var (
@@ -59,4 +65,20 @@ func RelayInit(cfg config.C) {
 		policies.NoComplexFilters,
 		policyFilterBookmark,
 	)
+
+	if err := CreateMetadataNote(cfg.RelayPubkey, cfg.RelayPrivkey, &gofeed.Feed{Title: cfg.RelayName, Description: cfg.RelayDescription}, cfg.DefaultProfilePicUrl); err != nil {
+		log.Print("[ERROR] ", err)
+	}
+
+	npub, err := nip19.EncodePublicKey(cfg.RelayPubkey)
+	if err != nil {
+		log.Printf("[ERROR] %s", err)
+	}
+
+	if _, err := os.Stat(fmt.Sprintf("%s/%s.png", cfg.QRCodePath, npub)); errors.Is(err, os.ErrNotExist) {
+		if err := qrcode.WriteFile(fmt.Sprintf("nostr:%s", npub), qrcode.Low, 128, fmt.Sprintf("%s/%s.png", cfg.QRCodePath, npub)); err != nil {
+			log.Print("[ERROR] creating relay QR code", err)
+		}
+	}
+
 }

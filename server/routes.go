@@ -679,7 +679,7 @@ func (s *Server) getPrometheusMetric(promParam *prometheus.Desc) string {
 		Timeout: 3 * time.Second,
 	}
 
-	url := fmt.Sprintf("http://localhost:%s/metrics", s.Cfg.Port)
+	url := fmt.Sprintf("http://localhost:%s%s/metrics", s.Cfg.Port, s.Cfg.RelayBasepath)
 
 	resp, err := client.Get(url)
 	if err != nil {
