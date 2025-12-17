@@ -22,8 +22,7 @@ ENV RELEASE_DATE=${RELEASE_DATE:-000}
 
 # Build the go binary
 #RUN go build -o rssnotes .
-RUN go build -ldflags="-s -w -linkmode external -extldflags '-static' -X 'rssnotes/internal/config.Version=$APP_VERSION' -X 'rssnotes/internal/config.GitHash=$GIT_HASH' -X 'rssnotes/internal/config.ReleaseDate=$RELEASE_DATE'" -o rssnotes .
-
+RUN go build -ldflags="-s -w -extldflags '-static' -X 'rssnotes/internal/config.Version=$APP_VERSION' -X 'rssnotes/internal/config.GitHash=$GIT_HASH' -X 'rssnotes/internal/config.ReleaseDate=$RELEASE_DATE'" -o rssnotes .
 
 # Stage 2: Create a image to run the Go application
 FROM alpine:latest

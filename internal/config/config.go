@@ -3,10 +3,10 @@ package config
 type C struct {
 	RelayName        string `envconfig:"RELAY_NAME" default:"rssnotes"`
 	RelayURL         string `envconfig:"RELAY_URL" required:"true"`
-	RelayBasepath    string `envconfig:"RELAY_BASEPATH" default:"rssnotes"`
+	RelayBasepath    string `envconfig:"RELAY_BASEPATH" default:""`
 	RelayPubkey      string `envconfig:"RELAY_PUBKEY" required:"true"`
 	RelayPrivkey     string `envconfig:"RELAY_PRIVKEY" required:"true"`
-	RelayDescription string `envconfig:"RELAY_DESCRIPTION" default:"An rss to nostr relay."`
+	RelayDescription string `envconfig:"RELAY_DESCRIPTION" default:"rss to nostr relay."`
 	RelayContact     string `envconfig:"RELAY_CONTACT" default:"example@example.com"`
 	RelayIcon        string `envconfig:"RELAY_ICON" default:"https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/commafeed.png"`
 	RandomSecret     string `envconfig:"RANDOM_SECRET" required:"true"`
@@ -23,7 +23,7 @@ type C struct {
 	QRCodePath     string `envconfig:"QRCODE_PATH" default:"./web/assets/qrcodes"`
 
 	RsslayTagKey            string `envconfig:"RSSLAY_TAG_KEY" default:"rsslay"`
-	DefaultProfilePicUrl    string `envconfig:"DEFAULT_PROFILE_PICTURE_URL" default:"/assets/static/mstile-150x150.png"`
+	DefaultProfilePicUrl    string `envconfig:"DEFAULT_PROFILE_PICTURE_URL" default:"./assets/static/mstile-150x150.png"`
 	DeleteFailingFeeds      bool   `envconfig:"DELETE_FAILIING_FEEDS" required:"false"`
 	MaxContentLength        int    `envconfig:"MAX_CONTENT_LENGTH" default:"250"`
 	FeedItemsRefreshMinutes int    `envconfig:"FEED_ITEMS_REFRESH_MINUTES" default:"30"`

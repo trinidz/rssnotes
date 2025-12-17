@@ -77,7 +77,7 @@ func InitRelay(cfg config.C) {
 
 	if _, err := os.Stat(fmt.Sprintf("%s/%s.png", cfg.QRCodePath, npub)); errors.Is(err, os.ErrNotExist) {
 		if err := qrcode.WriteFile(fmt.Sprintf("nostr:%s", npub), qrcode.Low, 128, fmt.Sprintf("%s/%s.png", cfg.QRCodePath, npub)); err != nil {
-			log.Print("[ERROR] creating relay QR code", err)
+			log.Print("[ERROR] creating relay QR code ", err)
 		}
 	}
 }

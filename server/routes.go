@@ -475,11 +475,11 @@ func (s *Server) handleImportProgress(c *router.Context) {
 	progressPct := ((float32(importedURL.EntryIndex) + 1.0) / float32(importedURL.TotalEntries)) * 100.0
 
 	if importedURL.EntryIndex+1 < importedURL.TotalEntries {
-		htmlStr := fmt.Sprintf("<div class='navbar-item' id='status-area' hx-get='/progress' hx-target='this' hx-swap='outerHTML' hx-trigger='every 600ms'>Processing...%d of %d<div class='navbar-item'><div id='progress' name='progress-bar' class='progress-bar' style='--width: %f' data-label=''></div></div></div>", importedURL.EntryIndex+1, importedURL.TotalEntries, progressPct)
+		htmlStr := fmt.Sprintf("<div class='navbar-item' id='status-area' hx-get='./progress' hx-target='this' hx-swap='outerHTML' hx-trigger='every 600ms'>Processing...%d of %d<div class='navbar-item'><div id='progress' name='progress-bar' class='progress-bar' style='--width: %f' data-label=''></div></div></div>", importedURL.EntryIndex+1, importedURL.TotalEntries, progressPct)
 		tmpl, _ := template.New("t").Parse(htmlStr)
 		tmpl.Execute(c.Out, nil)
 	} else {
-		htmlStr := fmt.Sprintf("<div class='navbar-item' id='status-area' hx-get='/progress' hx-target='this' hx-swap='outerHTML' hx-trigger='change from:#opml-import-form' hx-sync='#opml-file: queue first'><a href='/'>Refresh</a>..or..<a href='/detail'>Details</a> <div class='navbar-item'><div id='progress' name='progress-bar' class='progress-bar' style='--width: %f' data-label='Import Complete...'></div></div></div>", progressPct)
+		htmlStr := fmt.Sprintf("<div class='navbar-item' id='status-area' hx-get='./progress' hx-target='this' hx-swap='outerHTML' hx-trigger='change from:#opml-import-form' hx-sync='#opml-file: queue first'><a href='./'>Refresh</a>..or..<a href='./detail'>Details</a> <div class='navbar-item'><div id='progress' name='progress-bar' class='progress-bar' style='--width: %f' data-label='Import Complete...'></div></div></div>", progressPct)
 		tmpl, _ := template.New("t").Parse(htmlStr)
 		tmpl.Execute(c.Out, nil)
 	}
