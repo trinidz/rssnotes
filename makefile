@@ -1,5 +1,5 @@
 APP_NAME := rssnotes
-APP_VERSION := v0.0.16
+APP_VERSION := v0.0.17
 GIT_TAG := $(shell git describe --tags)
 GIT_HASH = $(shell git rev-parse --short=8 HEAD)
 RELEASE_DATE = $(shell date)

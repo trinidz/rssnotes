@@ -11,6 +11,7 @@ import (
 	"rssnotes/internal/relays"
 	"strings"
 
+	"github.com/fiatjaf/khatru"
 	"github.com/nbd-wtf/go-nostr"
 )
 
@@ -23,8 +24,8 @@ var (
 )
 
 type Server struct {
-	Cfg *config.C
-	// Feeds *rssfeeds.RssFeedStack
+	Cfg   *config.C
+	relay *khatru.Relay
 }
 
 func NewServer(cfg config.C) *Server {
@@ -32,7 +33,7 @@ func NewServer(cfg config.C) *Server {
 		cfg.RelayBasepath = "/" + strings.Trim(cfg.RelayBasepath, "/")
 	}
 
-	relays.InitRelay(cfg)
+	rly := relays.InitRelay(cfg)
 
 	tickerUpdateFeeds = time.NewTicker(time.Duration(cfg.FeedItemsRefreshMinutes) * time.Minute)
 	tickerDeleteOldNotes = time.NewTicker(time.Duration(24) * time.Hour)
@@ -40,7 +41,8 @@ func NewServer(cfg config.C) *Server {
 	go updateRssNotesState()
 
 	return &Server{
-		Cfg: &cfg,
+		Cfg:   &cfg,
+		relay: rly,
 	}
 }
 

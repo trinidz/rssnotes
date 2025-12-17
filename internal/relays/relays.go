@@ -26,7 +26,7 @@ var (
 	s          config.C
 )
 
-func InitRelay(cfg config.C) {
+func InitRelay(cfg config.C) *khatru.Relay {
 	s = cfg
 	ctx := context.Background()
 	pool = nostr.NewSimplePool(ctx)
@@ -34,7 +34,7 @@ func InitRelay(cfg config.C) {
 	seedRelays = helpers.GetRelayListFromFile(cfg.SeedRelaysPath)
 	if len(seedRelays) == 0 {
 		log.Panic("[FATAL] 0 seed relays; need to set relays")
-		return
+		return nil
 	}
 
 	//returned on the NIP-11 endpoint
@@ -48,7 +48,7 @@ func InitRelay(cfg config.C) {
 	//os.MkdirAll(db.Path, 0755)
 	if err := db.Init(); err != nil {
 		log.Panicf("[FATAL] db init: %s", err)
-		return
+		return nil
 	}
 	//defer db.Close()
 
@@ -80,4 +80,6 @@ func InitRelay(cfg config.C) {
 			log.Print("[ERROR] creating relay QR code ", err)
 		}
 	}
+
+	return rly
 }

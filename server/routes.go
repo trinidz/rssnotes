@@ -54,7 +54,10 @@ func (s *Server) handler() http.Handler {
 	r.For("/metricsDisplay", s.handleMetricsDisplay)
 	r.For("/log", s.handleLog)
 	r.For("/health", s.handleHealth)
-	r.For("/", s.handleFrontpage)
+	r.For("/home", s.handleFrontpage)
+	r.For("/", func(c *router.Context) {
+		s.relay.ServeHTTP(c.Out, c.Req)
+	})
 
 	return r
 }
@@ -88,7 +91,7 @@ func (s *Server) handleFrontpage(c *router.Context) {
 		RelayPubkey:         s.Cfg.RelayPubkey,
 		RelayNPubkey:        npub,
 		RelayDescription:    s.Cfg.RelayDescription,
-		RelayURL:            s.GetAddr().Host,
+		RelayURL:            fmt.Sprintf("%s%s", s.GetAddr().Host, s.GetAddr().Path),
 		Count:               len(items),
 		Entries:             items,
 		KindTextNoteCreated: s.getPrometheusMetric(metrics.KindTextNoteCreated.Desc()),
