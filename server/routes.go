@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"path/filepath"
 
+	"html/template"
 	"rssnotes/internal/config"
 	"rssnotes/internal/helpers"
 	"rssnotes/internal/models"
@@ -16,7 +18,6 @@ import (
 	"rssnotes/server/router"
 	"strconv"
 	"strings"
-	"text/template"
 	"time"
 
 	"github.com/gilliek/go-opml/opml"
@@ -70,8 +71,20 @@ func (s *Server) handleFrontpage(c *router.Context) {
 		http.Error(c.Out, err.Error(), http.StatusInternalServerError)
 	}
 
+	//https://appliedgo.net/spotlight/functions-in-templates-funcmap/
+	funcs := template.FuncMap{
+		"shortURL": func(urlLink string) string {
+			u, err := url.Parse(urlLink)
+			if err != nil {
+				log.Printf("[ERROR] shortURL: %s", err.Error())
+				return urlLink
+			}
+			return strings.TrimPrefix(u.Host, "www.")
+		},
+	}
+
 	npub, _ := nip19.EncodePublicKey(s.Cfg.RelayPubkey)
-	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/index.html", s.Cfg.TemplatePath)))
+	tmpl := template.Must(template.New("index.html").Funcs(funcs).ParseFiles(fmt.Sprintf("%s/index.html", s.Cfg.TemplatePath)))
 
 	data := struct {
 		RelayName           string

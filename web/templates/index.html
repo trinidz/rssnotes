@@ -8,8 +8,6 @@
     <link rel="icon" type="image/x-icon" href="./assets/static/favicon.ico">
     <script src="./assets/js/htmx.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
-    <!-- <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css"
-        integrity="sha384-DyZ88mC6Up2uqS4h/KRgHuoeGwBcD4Ng9SiP4dIRy0EXTlnuz47vAwmeGwVChigm" crossorigin="anonymous" /> -->
     <link rel="stylesheet" href="./assets/css/styles.css">
     <title>{{.RelayName}}</title>
 </head>
@@ -158,10 +156,9 @@
                     <span>
                         <div class="card">
                             <div class="card-header">
-                                <h3>{{.BookmarkEntity.URL}}</h3>
                                 <div class="card-icon"> <img src="{{.BookmarkEntity.ImageURL}}" alt="feed icon"> </div>
-                            </div>
-            
+                                <h2>{{ shortURL .BookmarkEntity.URL }}</h2>
+                                </div>
                             <div class="card-content">
                                 <div class="qr-code">
                                     <img src="./assets/qrcodes/{{.NPubKey}}.png" alt="npub qrcode">

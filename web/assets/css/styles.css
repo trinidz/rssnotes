@@ -42,6 +42,11 @@ tr.htmx-swapping td {
         }
  */
 
+ .card div {
+    margin: 3px;
+    padding: 0px;
+}
+
            .instructions-list {
                max-width: 800px;
                margin: 0 auto 30px;
@@ -177,11 +182,12 @@ tr.htmx-swapping td {
            .card {
                background: white;
                border-radius: 24px;
-               padding: 20px;
+            padding: 10px 10px 10px 10px; /* Reduced bottom padding */
                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
                transition: transform 0.3s ease, box-shadow 0.3s ease;
                display: flex;
                flex-direction: column;
+                   /* max-width: 280px; Set your desired maximum width */
            }
     
            .card:hover {
@@ -191,10 +197,9 @@ tr.htmx-swapping td {
     
            .card-header {
                display: flex;
-               justify-content: space-between;
-               align-items: flex-start;
+               /* justify-content: space-between;
+               align-items: flex-start; */
                margin-bottom: 10px;
-    
            }
     
            .card-icon {
@@ -217,15 +222,19 @@ tr.htmx-swapping td {
                object-fit: contain;
            }
     
-           .card h3 {
+           .card h2 {
                /* color: #333; */
-               font-size: 1.0rem;
+               font-size: 1.25rem;
                flex: 1;
                white-space: nowrap;
                overflow: hidden;
                text-overflow: ellipsis;
                max-width: 80%;
-    
+               text-align: center;
+
+/*             display: flex;
+                align-items: center;
+               justify-content: center; */
            }
     
            .card-content {
@@ -269,14 +278,15 @@ tr.htmx-swapping td {
            .card-divider {
                height: 1px;
                background: #e0e0e0;
-               margin-bottom: 10px;
-               margin-top: 1px;
+               margin-bottom: 20px;
+               margin-top: 5px;
            }
     
            .card-buttons {
                display: flex;
                gap: 10px;
-               justify-content: space-between;
+            justify-content: space-between;
+                /* flex-direction: row; */
            }
     
            .card-button {
@@ -338,7 +348,8 @@ tr.htmx-swapping td {
                }
     
                .card-buttons {
-                   flex-direction: column;
+                   /* flex-direction: column; */
+                    flex-direction: row;
                }
     
                .card-content {
