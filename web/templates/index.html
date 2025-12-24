@@ -151,17 +151,18 @@
             <h2 class="subtitle">Existing feeds:</h2>
             <div class="card-container" id="feed-list" hx-confirm="Are you sure?" hx-target="closest span"
                 hx-swap="outerHTML swap:1s">
-                <div class="card-grid">
+                <!-- <div class="message" id="message">Copied to clipboard!</div> -->
+                <div class="card-grid" id="card-grid">
                     {{range .Entries}}
                     <span>
                         <div class="card">
                             <div class="card-header">
                                 <div class="card-icon"> <img src="{{.BookmarkEntity.ImageURL}}" alt="feed icon"> </div>
-                                <h2>{{ shortURL .BookmarkEntity.URL }}</h2>
-                                </div>
+                                <h3> {{ shortURL .BookmarkEntity.URL }} </h3>
+                            </div>
                             <div class="card-content">
                                 <div class="qr-code">
-                                    <img src="./assets/qrcodes/{{.NPubKey}}.png" alt="npub qrcode">
+                                    <img src="./assets/qrcodes/{{.NPubKey}}.png" data-copy="{{.NPubKey}}" alt="npub qrcode">
                                 </div>
                             </div>
                             <div class="card-divider"></div>
@@ -197,7 +198,7 @@
             </p>
         </div>
     </footer>
-
+    <script src="./assets/js/copyclipboard.js"></script>
 </body>
 
 </html>
