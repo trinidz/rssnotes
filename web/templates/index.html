@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-</html>
 
 <head>
     <meta charset="utf-8">
@@ -151,7 +150,7 @@
             <h2 class="subtitle">Existing feeds:</h2>
             <div class="card-container" id="feed-list" hx-confirm="Are you sure?" hx-target="closest span"
                 hx-swap="outerHTML swap:1s">
-                <!-- <div class="message" id="message">Copied to clipboard!</div> -->
+                  {{ block "feeds-display-fragment" .}}
                 <div class="card-grid" id="card-grid">
                     {{range .Entries}}
                     <span>
@@ -182,6 +181,7 @@
                     </span>
                     {{end}}
                 </div>
+                {{end}}
             </div>
             
     </div>

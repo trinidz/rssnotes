@@ -293,12 +293,12 @@ func handleDeleteFeed(c *router.Context) {
 		FollowEntity: models.Entity{PubKey: feedPubkey},
 	}
 	followManagmentCh <- followAction
-
 	if err := relays.DeleteEntityInBookmarkEvent(feedPubkey); err != nil {
 		log.Printf("[ERROR] could not delete feed '%q'...Error: %s ", feedPubkey, err)
 	}
 
-	tmpl := template.New("t")
+	//tmpl := template.New("index.html").Funcs(funcs)
+	tmpl := template.New("index.html")
 	tmpl.Execute(c.Out, nil)
 }
 
@@ -572,7 +572,20 @@ func (s *Server) handleExportOpml(c *router.Context) {
 }
 
 func (s *Server) handleSearch(c *router.Context) {
-	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/search.html", s.Cfg.TemplatePath)))
+
+	funcs := template.FuncMap{
+		"shortURL": func(urlLink string) string {
+			u, err := url.Parse(urlLink)
+			if err != nil {
+				log.Printf("[ERROR] shortURL: %s", err.Error())
+				return urlLink
+			}
+			return strings.TrimPrefix(u.Host, "www.")
+		},
+	}
+
+	tmpl := template.Must(template.New("search.html").Funcs(funcs).ParseFiles(fmt.Sprintf("%s/search.html", s.Cfg.TemplatePath)))
+	//tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/search.html", s.Cfg.TemplatePath)))
 	metrics.SearchRequests.Inc()
 	query := c.Req.URL.Query().Get("query")
 	if query == "" || len(query) <= 4 {
