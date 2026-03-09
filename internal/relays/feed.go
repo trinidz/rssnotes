@@ -1,4 +1,4 @@
-package main
+package relays
 
 import (
 	"context"
@@ -6,13 +6,14 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"html"
 	"log"
-	"net/http"
 	"net/url"
+	"rssnotes/internal/helpers"
+	"rssnotes/internal/models"
 	"rssnotes/metrics"
+	"sort"
 	"strings"
 	"time"
 
@@ -22,22 +23,12 @@ import (
 	"github.com/nbd-wtf/go-nostr"
 )
 
-var (
-	fp     = gofeed.NewParser()
-	client = &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 2 {
-				return errors.New("stopped after 2 redirects")
-			}
-			return nil
-		},
-		Timeout: 5 * time.Second,
-	}
-)
-
-func parseFeedForUrl(url string) (*gofeed.Feed, error) {
+func ParseFeedForUrl(url string) (*gofeed.Feed, error) {
 	//metrics.CacheMiss.Inc()
-	fp.RSSTranslator = NewCustomTranslator()
+
+	fp := gofeed.NewParser()
+	fp.RSSTranslator = helpers.NewCustomTranslator()
+
 	feed, err := fp.ParseURL(url)
 	if err != nil {
 		log.Print("[ERROR] ", err)
@@ -55,24 +46,24 @@ func parseFeedForUrl(url string) (*gofeed.Feed, error) {
 	return feed, nil
 }
 
-func parseFeedForPubkey(pubKey string, deleteFailingFeeds bool) (*gofeed.Feed, Entity) {
+func parseFeedForPubkey(pubKey string, deleteFailingFeeds bool) (*gofeed.Feed, models.Entity) {
 	pubKey = strings.TrimSpace(pubKey)
 
-	entity, err := getSavedEntity(pubKey)
+	entity, err := GetSavedEntity(pubKey)
 	if err != nil {
 		log.Printf("[ERROR] failed to retrieve entity with pubkey '%s': %v", pubKey, err)
 		//metrics.AppErrors.With(prometheus.Labels{"type": "SQL_SCAN"}).Inc()
 		return nil, entity
 	}
 
-	if !IsValidHttpUrl(entity.URL) {
+	if !helpers.IsValidHttpUrl(entity.URL) {
 		log.Printf("[INFO] invalid url %q", entity.URL)
 		// if deleteFailingFeeds {
 		// }
 		return nil, entity
 	}
 
-	parsedFeed, err := parseFeedForUrl(entity.URL)
+	parsedFeed, err := ParseFeedForUrl(entity.URL)
 	if err != nil {
 		log.Printf("[ERROR] failed to parse feed at url %q: %v", entity.URL, err)
 		if deleteFailingFeeds {
@@ -93,8 +84,7 @@ func parseFeedForPubkey(pubKey string, deleteFailingFeeds bool) (*gofeed.Feed, E
 	return parsedFeed, entity
 }
 
-func createMetadataNote(pubkey string, privkey string, feed *gofeed.Feed, profilePictureUrl string) error {
-
+func CreateMetadataNote(pubkey string, privkey string, feed *gofeed.Feed, profilePictureUrl string) error {
 	if _, feedMetadata, _ := getLocalMetadataEvent(pubkey); feedMetadata.ID != "" {
 		if time.Now().Unix()-feedMetadata.CreatedAt.Time().Unix() < int64(s.FeedMetadataRefreshDays*86400) {
 			//log.Printf("[DEBUG] recent metadata exists at event ID %s created at: %v", feedMetadata.ID, feedMetadata.CreatedAt.Time().Unix())
@@ -146,9 +136,9 @@ func createMetadataNote(pubkey string, privkey string, feed *gofeed.Feed, profil
 		return err
 	}
 
-	relay.BroadcastEvent(&evt)
+	rly.BroadcastEvent(&evt)
 
-	for _, store := range relay.StoreEvent {
+	for _, store := range rly.StoreEvent {
 		store(context.TODO(), &evt)
 	}
 
@@ -164,7 +154,7 @@ func feedItemToNote(pubkey string, item *gofeed.Item, feed *gofeed.Feed, default
 	}
 
 	mdConverter := md.NewConverter("", true, nil)
-	mdConverter.AddRules(GetConverterRules()...)
+	mdConverter.AddRules(helpers.GetConverterRules()...)
 
 	description, err := mdConverter.ConvertString(item.Description)
 	if err != nil {
@@ -233,22 +223,22 @@ func feedItemToNote(pubkey string, item *gofeed.Item, feed *gofeed.Feed, default
 	return evt
 }
 
-func getPrivateKeyFromFeedUrl(url string, secret string) string {
+func GetPrivateKeyFromFeedUrl(url string, secret string) string {
 	m := hmac.New(sha256.New, []byte(secret))
 	m.Write([]byte(url))
 	r := m.Sum(nil)
 	return hex.EncodeToString(r)
 }
 
-func checkAllFeeds() {
+func CheckAllFeeds() {
 	newBookmarkCreated := false
-	currentEntities, err := getSavedEntities()
+	currentEntities, err := GetSavedEntities()
 	if err != nil {
 		log.Print("[ERROR] could not retrieve entities")
 		return
 	}
 	for _, currentEntity := range currentEntities {
-		if !TimetoUpdateFeed(currentEntity) {
+		if !helpers.TimetoUpdateFeed(currentEntity) {
 			//log.Printf("[DEBUG] not time to update %s. Time since last check: %d Avg post time: %d", currentEntity.URL, time.Now().Unix()-currentEntity.LastCheckedTime, currentEntity.AvgPostTime)
 			continue
 		}
@@ -261,7 +251,7 @@ func checkAllFeeds() {
 			continue
 		}
 
-		if err := createMetadataNote(currentEntity.PubKey, currentEntity.PrivateKey, parsedFeed, s.DefaultProfilePicUrl); err != nil {
+		if err := CreateMetadataNote(currentEntity.PubKey, currentEntity.PrivateKey, parsedFeed, s.DefaultProfilePicUrl); err != nil {
 			log.Printf("[ERROR] could not create metadata note: %s", err)
 		}
 
@@ -275,9 +265,9 @@ func checkAllFeeds() {
 				}
 				log.Printf("[DEBUG] feed entity %s note created with ID %s", entity.URL, evt.ID)
 
-				relay.BroadcastEvent(&evt)
+				rly.BroadcastEvent(&evt)
 
-				for _, store := range relay.StoreEvent {
+				for _, store := range rly.StoreEvent {
 					store(context.TODO(), &evt)
 				}
 
@@ -291,7 +281,7 @@ func checkAllFeeds() {
 			allPostTimes = append(allPostTimes, evt.CreatedAt.Time().Unix())
 		}
 
-		if err := updateEntityTimesInBookmarkEvent(Entity{
+		if err := updateEntityTimesInBookmarkEvent(models.Entity{
 			PubKey:          entity.PubKey,
 			LastPostTime:    lastPostTime,
 			LastCheckedTime: time.Now().Unix(),
@@ -307,7 +297,7 @@ func checkAllFeeds() {
 	}
 }
 
-func initFeed(pubkey string, privkey string, feedURL string, parsedFeed *gofeed.Feed) (int64, []int64) {
+func InitFeed(pubkey string, privkey string, feedURL string, parsedFeed *gofeed.Feed) (int64, []int64) {
 	var lastPostTime int64
 	postTimes := make([]int64, 0)
 
@@ -320,9 +310,9 @@ func initFeed(pubkey string, privkey string, feedURL string, parsedFeed *gofeed.
 		}
 		log.Printf("[DEBUG] feed entity %s note created with ID %s", feedURL, evt.ID)
 
-		relay.BroadcastEvent(&evt)
+		rly.BroadcastEvent(&evt)
 
-		for _, store := range relay.StoreEvent {
+		for _, store := range rly.StoreEvent {
 			store(context.TODO(), &evt)
 		}
 
@@ -336,4 +326,24 @@ func initFeed(pubkey string, privkey string, feedURL string, parsedFeed *gofeed.
 	}
 
 	return lastPostTime, postTimes
+}
+
+func CalcAvgPostTime(feedPostTimes []int64) int64 {
+	if len(feedPostTimes) < s.MinPostPeriodSamples {
+		return int64(s.MaxAvgPostPeriodHrs * 60 * 60)
+	}
+
+	sort.SliceStable(feedPostTimes, func(i, j int) bool {
+		return feedPostTimes[i] > feedPostTimes[j]
+	})
+
+	avgposttimesecs := (feedPostTimes[0] - feedPostTimes[len(feedPostTimes)-1]) / int64(len(feedPostTimes))
+
+	if avgposttimesecs < int64(s.MinAvgPostPeriodMins*60) {
+		return int64(s.MinAvgPostPeriodMins * 60)
+	} else if avgposttimesecs > int64(s.MaxAvgPostPeriodHrs*60*60) {
+		return int64(s.MaxAvgPostPeriodHrs * 60 * 60)
+	}
+
+	return avgposttimesecs
 }

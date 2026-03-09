@@ -5,7 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"rssnotes/yarrscraper"
+	"rssnotes/internal/yarr/yarrscraper"
 )
 
 var imageTypes = map[string]bool{

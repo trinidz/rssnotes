@@ -1,4 +1,4 @@
-package main
+package helpers
 
 import (
 	"context"
@@ -9,8 +9,8 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"rssnotes/internal/models"
 	"slices"
-	"sort"
 	"strings"
 	"time"
 
@@ -155,26 +155,6 @@ func GetRelayListFromFile(filePath string) []string {
 	return relayList
 }
 
-func CalcAvgPostTime(feedPostTimes []int64) int64 {
-	if len(feedPostTimes) < s.MinPostPeriodSamples {
-		return int64(s.MaxAvgPostPeriodHrs * 60 * 60)
-	}
-
-	sort.SliceStable(feedPostTimes, func(i, j int) bool {
-		return feedPostTimes[i] > feedPostTimes[j]
-	})
-
-	avgposttimesecs := (feedPostTimes[0] - feedPostTimes[len(feedPostTimes)-1]) / int64(len(feedPostTimes))
-
-	if avgposttimesecs < int64(s.MinAvgPostPeriodMins*60) {
-		return int64(s.MinAvgPostPeriodMins * 60)
-	} else if avgposttimesecs > int64(s.MaxAvgPostPeriodHrs*60*60) {
-		return int64(s.MaxAvgPostPeriodHrs * 60 * 60)
-	}
-
-	return avgposttimesecs
-}
-
-func TimetoUpdateFeed(rssfeed Entity) bool {
+func TimetoUpdateFeed(rssfeed models.Entity) bool {
 	return time.Now().Unix()-rssfeed.LastCheckedTime >= rssfeed.AvgPostTime
 }

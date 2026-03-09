@@ -6,7 +6,7 @@ services:
     volumes:
       - "./.env:/.env"
       - "./db:/app/db"
-      - "./qrcodes:/app/web/assests/qrcodes"
+      - "./qrcodes:/app/web/assets/qrcodes"
       - "./logfile.log:/app/logfile.log"
       - "./seedrelays.json:/app/seedrelays.json:ro"
     ports:

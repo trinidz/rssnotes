@@ -1,4 +1,4 @@
-package main
+package helpers
 
 import (
 	"math"
@@ -106,7 +106,7 @@ func formatNumber(input float64) string {
 	return xFormatted
 }
 
-func nearestThousandFormat(num float64) string {
+func NearestThousandFormat(num float64) string {
 
 	if math.Abs(num) < 999.5 {
 		xNum := formatNumber(num)

@@ -18,6 +18,7 @@ require (
 	github.com/nbd-wtf/go-nostr v0.37.3
 	github.com/prometheus/client_golang v1.20.5
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
+	golang.org/x/net v0.29.0
 )
 
 require (
@@ -67,7 +68,6 @@ require (
 	github.com/valyala/fasthttp v1.51.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0 // indirect
-	golang.org/x/net v0.29.0 // indirect
 	golang.org/x/sys v0.25.0 // indirect
 	golang.org/x/text v0.18.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect

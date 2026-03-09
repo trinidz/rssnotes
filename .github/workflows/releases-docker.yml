@@ -14,6 +14,10 @@ jobs:
       packages: write
       contents: read
     steps:
+      - name: Get current date
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
       - name: Check out the repo
         uses: actions/checkout@v4
 
@@ -43,5 +47,9 @@ jobs:
           context: .
           push: true
           platforms: linux/amd64,linux/arm64/v8
+          build-args: |
+            GIT_HASH=${{ github.sha }}
+            RELEASE_DATE=${{ steps.date.outputs.date }}
+            APP_VERSION=${{ github.ref_name }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

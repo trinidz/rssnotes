@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	htmlutil "rssnotes/yarrhtmlutil"
+	htmlutil "rssnotes/internal/yarr/yarrhtmlutil"
 )
 
 type atomFeed struct {
