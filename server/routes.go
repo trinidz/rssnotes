@@ -297,7 +297,6 @@ func handleDeleteFeed(c *router.Context) {
 		log.Printf("[ERROR] could not delete feed '%q'...Error: %s ", feedPubkey, err)
 	}
 
-	//tmpl := template.New("index.html").Funcs(funcs)
 	tmpl := template.New("index.html")
 	tmpl.Execute(c.Out, nil)
 }
