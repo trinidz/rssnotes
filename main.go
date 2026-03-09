@@ -43,8 +43,8 @@ func main() {
 
 	srvr := server.NewServer(c)
 
-	fmt.Printf("listeniing on 0.0.0.0:%s%s\n", srvr.Cfg.Port, srvr.GetAddr().Path)
-	fmt.Printf("public url at %s\n", srvr.GetAddr().Scheme+"://"+srvr.GetAddr().Host+srvr.GetAddr().Path)
+	fmt.Printf("listening on 0.0.0.0:%s%s\n", srvr.Cfg.Port, srvr.GetAddr().Path)
+	fmt.Printf("public url (RELAY_URL) at %s\n", srvr.GetAddr().Scheme+"://"+srvr.GetAddr().Host+srvr.GetAddr().Path)
 	if err := http.ListenAndServe(":"+srvr.Cfg.Port, srvr.Serve()); err != nil {
 		fmt.Printf("ListenAndServe error %s", err)
 		log.Panicf("[FATAL] ListenAndServe error %s", err)

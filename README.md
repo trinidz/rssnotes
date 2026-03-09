@@ -56,7 +56,7 @@ touch logfile.log
 
 8. Copy and paste the contents from the [sample.seedrelays.json](https://github.com/trinidz/rssnotes/blob/main/sample.seedrelays.json) file into your `seedrelays.json` file. Save and exit the file.
 
-9. Run `docker-compose up -d` while in the `rssnotes` directory. This will start the rssnotes container in the background. Go to http://localhost:3334 in your browser.
+9. Run `docker-compose up -d` while in the `rssnotes` directory. This will start the rssnotes container in the background. Go to http://<your-host-ip-address:3334/home> in your browser.  Add the rssnotes relay to your client at ws://<your-host-ip-address:3334>. 
 
 ## Run the relay as a service
 1. Clone the repo and cd into the repo folder.
@@ -130,4 +130,4 @@ sudo systemctl start rssnotes
 sudo systemctl enable rssnotes
 ```
 
-13. Go to http://localhost:3334 in your browser.
+13. Go to http://<your-host-ip-address:3334/home> in your browser. Add the rssnotes relay to your client at ws://<your-host-ip-address:3334>. 
