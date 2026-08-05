@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="./assets/static/favicon.ico">
+    <script src="./assets/js/htmx.min.js"></script>
+    <link rel="stylesheet" href="./assets/css/darkmode_style.css">
+    <title>{{.RelayName}}</title>
+</head>
+<body>
+    <!-- Company Logo -->
+    <div class="company-logo">
+        <img src="./assets/static/rssnotes-logo.png"
+                    alt="{{.RelayName}}: comvert RSS or Atom feeds into Nostr profiles" width="112" height="28">
+    </div>
+
+    <!-- Top Navigation Menu -->
+    <nav class="top-nav">
+        <a href="./home" class="nav-icon-link" title="Home">
+            <!-- Option 1: Image (Uncomment the line below and update src) -->
+            <!-- <img src="path/to/your/icon.png" alt="Home" class="nav-img"> -->
+            <!-- Option 2: Emoji (Default) -->
+            <span class="nav-icon">🏠</span>
+        </a>
+        <div class="nav-options">
+            <a href="javascript:document.getElementById('opml-file').click()" class="nav-link">Import</a>
+            <a href="./export" class="nav-link">Export</a>
+            <a href="https://github.com/trinidz/rssnotes" class="nav-link">Documentation</a>
+        </div>
+    </nav>
+
+    <!-- Progress Bar Container (Hidden by default, shown via JS) -->
+    <div class="progress-container" id="progressBar">
+        <!-- Status Text (Hidden/Visible with bar) -->
+        <div class="status-text" id="progressStatus">Processing...</div>
+        <!-- The Bar Itself -->
+        <div class="progress-track">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+    </div>
+
+    <!-- Import File Handling -- Activates progress bar section above -->
+    <div>
+        <form id="opml-import-form" hx-encoding="multipart/form-data" hx-post="./import"
+            hx-trigger="change from:#opml-file" hx-target="#status-area" hx-swap="innerHTML">
+            <input type="file" id="opml-file" name="opml-file" accept=".xml,.opml" style="display:none;">
+        </form>
+
+        <div id="status-area" hx-get="./progress" hx-target="this" hx-swap="outerHTML"
+            hx-trigger="change from:#opml-import-form" hx-sync="#opml-file: queue first"></div>
+    </div>
+
+    <!-- Header Section -->
+    <div class="header-container">
+        <div class="header-text">
+            <h1 class="main-title">{{.RelayName}}</h1>
+            <p class="main-subtitle">convert RSS or Atom feeds into <a href="https://github.com/nostr-protocol/nostr">Nostr</a> notes.</p>
+        </div>
+        <div class="header-qr">
+            <span class="qr-label">Subscribe to this relay.</span>
+            <div class="qr-box">
+                <img src="./assets/qrcodes/{{.RelayNPubkey}}.png" alt="npub qrcode">
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Divider Line -->
+    <div class="top-divider"></div>
+
+    <!-- Stats Section -->
+    <div class="stats-container" hx-get="./metricsDisplay" hx-trigger="click from:#btn-delete delay:3000ms, every 600s">
+         {{ block "metrics-display-fragment" .}}
+        <div class="stat-item">
+            <span class="stat-label">Feeds</span>
+            <span class="stat-value">{{.Count}}</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Notes Created</span>
+            <span class="stat-value">{{.KindTextNoteCreated}}</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Notes Blasted</span>
+            <span class="stat-value">{{.NotesBlasted}}</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Notes Deleted</span>
+            <span class="stat-value" style="color: var(--btn-delete-text);">{{.KindTextNoteDeleted}}</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Relay Queries</span>
+            <span class="stat-value">{{.QueryEventsRequests}}</span>
+        </div>
+        {{end}}
+    </div>
+
+    <!-- Instructions Section -->
+    <div class="instructions-section">
+        <h2 style="margin-bottom: 15px; color: var(--text-primary);">Setup Instructions</h2>
+        <ol class="instructions-list">
+            <li>Add the URL of an RSS feed below in the <strong>Generate Pubkey</strong> box and click the
+                    button to create a corresponding nostr public key.
+            <li>If you have an opml file, you can import RSS feeds using the <strong>Import</strong> link at the top of the page.</li>
+            <li>Add your rssnotes relay to your Nostr client: <strong><code>wss://{{.RelayURL}}</code></strong></li>
+            <li><strong>To follow a single rss feed using nostr </strong>scan the feed's qr code or click the qr code to copy the feed's npub. 
+                Follow the feed's public key from your Nostr client. </li>
+            <li><strong>To follow all of the rss feeds on your rssnotes relay: </strong>Scan the relay's qr code above, then login to nostr using the 
+                relay's public key from your Nostr client.</li>
+            <li>Some nostr clients also allow your to follow a relay just using the relay url.</li>
+            <li>For sites missing a feed:</li>
+        </ol>
+        <ul class="instructions-list" style="list-style-type: circle;">
+            <li>Try the url of a standard website in the <strong>Generate Pubkey</strong> box. rssnotes will search for rss feeds associated with the url.</li>
+            <li>Try using <a href="https://rss-bridge.github.io/rss-bridge/">RSS-Bridge.</a></li>
+            <li>Try using <b><a href="https://rsshub.app/">RssHub</a> is capable of generating RSS feeds from pretty much
+                    everything too</b>, check it how to use it in <a
+                    href="https://docs.rsshub.app/">https://docs.rsshub.app</a> (ex. <a
+                    href="https://rsshub.app/github/topics/nostr">repos inside nostr topic in GitHub</a>)
+            </li>
+        </ul>
+    </div>
+
+    <!-- Input Section -->
+    <div class="input-section">
+        <form action="./create" method="GET">
+            <div class="input-row">
+                <input type="url" class="input-field" placeholder="Enter an rss feed url ..."  name="create-feed-pubkey">
+                <button class="action-btn">Generate Pubkey</button>
+            </div>
+        </form>
+    
+        <form action="./search" method="GET">
+            <div class="input-row">
+                <input type="text" class="input-field" placeholder="Search existing feeds..." name="search-query">
+                <button class="action-btn">Search</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Divider Line -->
+    <div class="main-divider"></div>
+
+    <!-- Card Grid -->
+    <div class="card-container" id="card-grid" hx-target="closest article" hx-swap="outerHTML swap:1s">
+        {{range .Entries}}
+        <!-- Card 1 -->
+        <article class="card">
+            <div class="card-icon"><img src="{{.BookmarkEntity.IconURL}}" alt="👤"></div>
+            <h2 class="card-title">{{ .BookmarkEntity.FeedTitle }}</h2>
+            
+            <div class="qr-container">
+                <img src="./assets/qrcodes/{{.BookmarkEntity.Npub}}.png" data-copy="{{.BookmarkEntity.Npub}}" alt="npub qrcode">
+            </div>
+
+            <div class="card-divider"></div>
+
+            <div class="card-actions">
+                <!--                 
+                <button class="btn btn-profile" onclick="window.location.href='./profile?pubkey={{.BookmarkEntity.PubKey}}'">
+                    <span class="btn-icon">👤</span>
+                    Profile
+                </button> 
+                -->
+                <button class="btn btn-public" hx-target="closest button" hx-confirm="Are you sure?"
+                            hx-get="./blastfeed?pubkey={{.BookmarkEntity.PubKey}}&blastr={{if .BookmarkEntity.Blastr}}Public{{else}}Private{{end}}">
+                    <span class="btn-icon">🌍</span>
+                    {{if .BookmarkEntity.Blastr}}Public{{else}}Private{{end}}
+                </button>
+                <button class="btn btn-rss" onclick="window.open('{{.BookmarkEntity.FeedURL}}','_blank')">
+                    <span class="btn-icon">📡</span>
+                    RSS
+                </button>
+                <button class="btn btn-delete" hx-confirm="Are you sure?" hx-delete="./delete?pubkey={{.BookmarkEntity.PubKey}}">
+                    <span class="btn-icon">🗑️</span>
+                    Delete
+                </button>
+            </div>
+        </article>
+        {{end}}
+
+        <!-- Sample Card -->
+<!--         <article class="card">
+            <div class="card-icon">📰</div>
+            <h2 class="card-title">News Feed</h2>
+            
+            <div class="qr-container">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=NewsFeed001" alt="News QR">
+            </div>
+
+            <div class="card-divider"></div>
+
+            <div class="card-actions">
+                <button class="btn btn-profile">
+                    <span class="btn-icon">👤</span>
+                    Profile
+                </button>
+                <button class="btn btn-public">
+                    <span class="btn-icon">🌍</span>
+                    Public
+                </button>
+                <button class="btn btn-rss">
+                    <span class="btn-icon">📡</span>
+                    RSS
+                </button>
+                <button class="btn btn-delete">
+                    <span class="btn-icon">🗑️</span>
+                    Delete
+                </button>
+            </div>
+        </article> -->
+
+    </div>
+    
+    <!-- Footer Section -->
+    <footer class="site-footer">
+        <div class="footer-content">
+            <div class="copyright"> &copy; 2026 Nostr.</div>
+            <div class="owner-info">
+                <a href="https://github.com/trinidz/rssnotes"><strong>rssnotes {{.Version}}</strong></a> original work by <a
+                    href="https://fiatjaf.com">fiatjaf</a> and <a href="https://piraces.dev">piraces</a> modifications
+                by <a href="https://njump.me/npub15ucds95a8m2whgj4esll39lhxta5jwk8lqvmtz6ne8lf8ksmggrqz74dq7">trinidz</a>.
+                The source code is <a href="https://unlicense.org/">UNlicensed</a>. Keep the good vibes 🤙
+            </div>
+        </div>
+    </footer>
+    <script src="./assets/js/copyclipboard.js"></script>
+    <script src="./assets/js/progressbar.js"></script>
+</body>
+</html>

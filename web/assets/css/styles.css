@@ -1,0 +1,432 @@
+@media (max-width: 768px) {
+    h1 {
+        font-size: 2rem;
+    }
+
+    .card-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .card-buttons {
+        /* flex-direction: column; */
+        flex-direction: row;
+    }
+
+    .card-content {
+        flex-direction: column;
+    }
+    
+    .qr-code {
+        width: 100px;
+        height: 100px;
+        align-self: center;
+    }
+
+    .instructions-list {
+        padding: 20px 25px;
+    }
+
+    .instructions-list li {
+        padding-left: 35px;
+    }
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+    background-color: rgb(53, 53, 53);
+    color: white;
+}
+
+.progress-bar {
+	position: relative;
+	width: 300px;
+	height: 2.5em;
+	background-color: #111;
+	border-radius: 1.25em;
+	color: white;
+}
+
+.progress-bar::before {
+	content: attr(data-label);
+	display: flex;
+	align-items: center;
+	position: absolute;
+	left: .5em;
+	top: .5em;
+	bottom: .5em;
+	width: calc(var(--width, 0) * 1%);
+	min-width: 2rem;
+	max-width: calc(100% - 1em);
+	background-color: rgb(0, 48, 153);
+	border-radius: .75em;
+	padding: .125em;
+}
+
+tr.htmx-swapping td {
+	opacity: 0;
+	transition: opacity 1s ease-out;
+  }
+ 
+
+.instructions-list {
+    max-width: 800px;
+    margin: 0 auto 30px;
+    /* background: rgba(255, 255, 255, 0.95); */
+        background: #1e1e1e;
+
+    /* background: black; */
+    color: white;
+    padding: 25px 35px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+    
+.instructions-list ol {
+    counter-reset: item;
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.instructions-list li {
+    counter-increment: item;
+    margin-bottom: 15px;
+    padding-left: 40px;
+    position: relative;
+    /* color: #333; */
+        color: white;
+
+    line-height: 1.6;
+}
+    
+.instructions-list li:last-child {
+    margin-bottom: 0;
+}
+
+.instructions-list li::before {
+    content: counter(item);
+    position: absolute;
+    left: 0;
+    top: 0;
+    background: #667eea;
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+/* for border above stats line */
+.level {
+    border-top: 1px solid white; 
+    padding-top: 16px;
+}
+
+/* color for numbers in stats line and text in the subtitle class */
+.title,.subtitle{
+    color: white;
+}
+
+.search-container {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 30px;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.upload-container {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 30px;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+    
+.upload-input {
+    padding: 12px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    flex: 1;
+    font-size: 1rem;
+    color: #333;
+}
+
+.upload-input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.upload-button {
+    padding: 12px 20px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background 0.3s ease;
+}
+    
+.upload-button:hover {
+    background: #764ba2;
+}
+
+.search-input {
+    padding: 12px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    flex: 1;
+    font-size: 1rem;
+    color: #333;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+    
+.search-button {
+    padding: 12px 20px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background 0.3s ease;
+}
+
+.search-button:hover {
+    background: #764ba2;
+}
+
+/* Card Styling */
+.card {
+    background-color: #1e1e1e;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: 1px solid #333;
+    transition: transform 0.2s ease, border-color 0.2s;
+    min-height: 0;
+    height: fit-content;
+}
+
+.card div {
+    margin: 3px;
+    padding: 0px;
+}
+
+.card-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+    
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 15px;
+}
+
+  .card:hover {
+    transform: translateY(-4px);
+    border-color: #555;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  }
+    
+ /* Header: Icon Left, Title Right */
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+ .card-icon img {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #bb86fc, #3700b3);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 20px;
+    flex-shrink: 0;
+    box-shadow: 0 0 10px rgba(160, 144, 179, 0.3);
+  }
+
+ /* Truncation Logic */
+  .card-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color:#ffffff;
+    margin: 0;
+    
+    /* Truncation Properties */
+    white-space: nowrap;       /* Prevent wrapping */
+    overflow: hidden;          /* Hide overflow */
+    text-overflow: ellipsis;   /* Show ellipsis */
+    min-width: 0;              /* Required for flex items to truncate */
+    max-width: 100%;           /* Ensure it doesn't exceed parent */
+  }
+
+.card-content {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 10px;
+    flex-grow: 1;
+    flex-direction: column;
+    align-items: center;
+}
+
+.card p {
+    color: #666;
+    line-height: 1.6;
+    flex: 1;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    margin-bottom: 15px;
+}
+    
+.card-divider {
+/*     height: 1px;
+     background: #e0e0e0; 
+    margin-bottom: 20px;
+    margin-top: 5px; */
+
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    gap: 10px;
+    padding-top: 16px;
+    border-top: 1px solid #333;
+    flex-shrink: 0;
+}
+    
+.card-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+.card-button {
+    flex: 1;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s ease;
+  }
+  
+  /* Button Specific Styles */
+  .card-button.secondary:hover {
+    background: #2e3b2e;
+    border-color: #4caf50;
+    color: #4caf50;
+  }
+
+.card-button.tertiary:hover {
+    background: #3b2e2e;
+    border-color: #ff9800;
+    color: #ff9800;
+}
+
+.card-button.primary:hover {
+    background: #3b2e2e;
+    border-color: #f44336;
+    color: #f44336;
+}
+
+.card-button span {
+    font-size: 1.2rem;
+}
+    
+.copy-icon {
+    margin-left: 5px;
+    font-size: 0.8rem;
+    color: #666;
+    transition: color 0.3s ease;
+}
+
+.copy-icon:hover {
+    color: #667eea;
+}
+
+.qr-code {
+    width: 128px;
+    height: 128px;
+    flex-shrink: 0;
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1px;
+    overflow: hidden;
+    margin-bottom: 5px;
+}
+    
+.qr-code img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: contain;
+}
+
+.qr-code img:hover {
+    transform: scale(1.05);
+}
+
+.message {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 15px 25px;
+    /* background-color: #667eea; defined in copyclipboard.js */
+    color: white;
+    border-radius: 10%;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 1000;
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.message.show {
+    opacity: 1;
+}
+
+.foot {
+    /* background-color: #fafafa; */
+    padding: 3rem 1.5rem 6rem
+}
+
+

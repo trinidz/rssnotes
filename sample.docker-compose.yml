@@ -1,0 +1,20 @@
+services:
+  rssnotes-relay:
+    image: ghcr.io/trinidz/rssnotes:latest
+    container_name: rssnotes
+
+    volumes:
+      - ./.env:/.env
+      - ./seedrelays.json:/app/seedrelays.json:ro
+      - ./logfile.log:/app/logfile.log
+      - db:/app/db
+      - qrcodes:/app/web/assets/qrcodes
+
+    ports:
+      - 3334:3334
+      
+    restart: unless-stopped
+
+volumes:
+  db:
+  qrcodes:

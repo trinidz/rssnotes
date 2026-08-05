@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="./assets/static/favicon.ico">
+    <script src="./assets/js/htmx.min.js"></script>
+    <link rel="stylesheet" href="./assets/css/darkmode_style.css">
+    <title>{{.RelayName}}</title>
+</head>
+<body>
+    <!-- Company Logo -->
+    <div class="company-logo">
+        <img src="./assets/static/rssnotes-logo.png"
+                    alt="{{.RelayName}}: comvert RSS or Atom feeds into Nostr profiles" width="112" height="28">
+    </div>
+
+    <!-- Top Navigation Menu -->
+    <nav class="top-nav">
+        <a href="./home" class="nav-icon-link" title="Home">
+            <!-- Option 1: Image (Uncomment the line below and update src) -->
+            <!-- <img src="path/to/your/icon.png" alt="Home" class="nav-img"> -->
+            <!-- Option 2: Emoji (Default) -->
+            <span class="nav-icon">🏠</span>
+        </a>
+        <div class="nav-options">
+            <a href="https://github.com/trinidz/rssnotes" class="nav-link">Documentation</a>
+        </div>
+    </nav>
+
+    <!-- Header Section -->
+    <div class="header-container">
+        <div class="header-text">
+            <h1 class="main-title">{{.RelayName}}</h1>
+            <p class="main-subtitle">convert RSS or Atom feeds into <a href="https://github.com/nostr-protocol/nostr">Nostr</a> notes.</p>
+        </div>
+        <div class="header-qr">
+            <span class="qr-label">Subscribe to this relay.</span>
+            <div class="qr-box">
+                <img src="./assets/qrcodes/{{.RelayNPubkey}}.png" alt="npub qrcode">
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Divider Line -->
+    <div class="top-divider"></div>
+
+    <!-- Stats Section -->
+    <div class="stats-container" hx-get="./metricsDisplay" hx-trigger="click from:#btn-delete delay:3000ms, every 600s">
+        <div class="stat-item">
+            <span class="stat-label">Feeds Imported</span>
+            <span class="stat-value">{{.GoodFeeds}}</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Feeds Rejected</span>
+            <span class="stat-value">{{.BadFeeds}}</span>
+        </div>
+    </div>
+
+     <!-- Instructions Section -->
+    
+    <div class="instructions-section">
+        <h2 style="margin-bottom: 15px; color: var(--text-primary); text-align: center;">Import Results</h2>
+    </div>
+
+    <!-- Imported Feeds Results Table -->
+    <div class="table-container">
+        <table class="status-table">
+            <thead>
+                <tr>
+                    <th>Feed Title</th>
+                    <th>Feed URL</th>
+                    <th>Feed Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows -->
+                {{range .Feeds}}
+                <tr>
+                    <td>{{.BookmarkEntity.FeedTitle}}</td>
+                    <td><a href={{.BookmarkEntity.FeedURL}} target="_blank">{{.BookmarkEntity.FeedURL}}</a></td>
+                    {{if .Error}}
+                    <td><span class="status-badge status-err">{{.ErrorMessage}}</span></td>
+                    {{else}}
+                    <td><span class="status-badge status-ok">{{.ErrorMessage}}</span></td>
+                    {{end}}
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Divider Line -->
+    <div class="main-divider"></div>
+
+    <!-- Footer Section -->
+    <footer class="site-footer">
+        <div class="footer-content">
+            <div class="copyright"> &copy; 2026 Nostr.</div>
+            <div class="owner-info">
+                <a href="https://github.com/trinidz/rssnotes"><strong>rssnotes {{.Version}}</strong></a> original work by <a
+                    href="https://fiatjaf.com">fiatjaf</a> and <a href="https://piraces.dev">piraces</a> modifications
+                by <a href="https://njump.me/npub15ucds95a8m2whgj4esll39lhxta5jwk8lqvmtz6ne8lf8ksmggrqz74dq7">trinidz</a>.
+                The source code is <a href="https://unlicense.org/">UNlicensed</a>. Keep the good vibes 🤙
+            </div>
+        </div>
+    </footer>
+    <script src="./assets/js/copyclipboard.js"></script>
+</body>
+</html>

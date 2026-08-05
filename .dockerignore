@@ -1,0 +1,9 @@
+README.md
+makefile
+.git/
+.gitea/
+bin/
+sample.*
+db/
+.env
+web/assets/qrcodes
