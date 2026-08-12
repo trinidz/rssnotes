@@ -82,13 +82,15 @@ func parseFeedForPubkey(pubKey string, deleteFailingFeeds bool) (*gofeed.Feed, e
 	return parsedFeed, nil
 }
 
-func CreateMetadataNote(pubkey string, privkey string, feed *gofeed.Feed, profilePictureUrl string) error {
-	if feedMetadata, _ := getLocalMetadataEvent(pubkey); feedMetadata.ID != "" {
-		if time.Now().Unix()-feedMetadata.CreatedAt.Time().Unix() < int64(s.FeedMetadataRefreshDays*86400) {
-			//log.Printf("[DEBUG] recent metadata exists at event ID %s created at: %v", feedMetadata.ID, feedMetadata.CreatedAt.Time().Unix())
-			return nil
-		}
-	}
+func CreateMetadataNote(pubkey string, privkey string, feed *gofeed.Feed, profilePictureUrl string) (*nostr.Event, error) {
+	/*
+	   if feedMetadata, _ := getLocalMetadataEvent(pubkey); feedMetadata.ID != "" {
+	   		if time.Now().Unix()-feedMetadata.CreatedAt.Time().Unix() < int64(s.FeedMetadataRefreshDays*86400) {
+	   			//log.Printf("[DEBUG] recent metadata exists at event ID %s created at: %v", feedMetadata.ID, feedMetadata.CreatedAt.Time().Unix())
+	   			return nil
+	   		}
+	   	}
+	*/
 
 	var theDescription = feed.Description
 	var theFeedTitle = feed.Title
@@ -102,8 +104,8 @@ func CreateMetadataNote(pubkey string, privkey string, feed *gofeed.Feed, profil
 
 	metadata := map[string]string{
 		"name":         theFeedTitle,
-		"about":        theDescription + "--" + feed.Link,
-		"display_name": theFeedTitle + "(RSS Feed)",
+		"about":        theDescription,
+		"display_name": theFeedTitle + " (RSS Feed)",
 		"website":      feed.Link,
 		"banner":       "",
 		"nip05":        "",
@@ -121,7 +123,7 @@ func CreateMetadataNote(pubkey string, privkey string, feed *gofeed.Feed, profil
 	content, err := json.Marshal(metadata)
 	if err != nil {
 		log.Print("[ERROR] marshaling metadata content", err)
-		return err
+		return nil, err
 	}
 
 	createdAt := nostr.Timestamp(time.Now().Unix())
@@ -137,7 +139,7 @@ func CreateMetadataNote(pubkey string, privkey string, feed *gofeed.Feed, profil
 
 	if err := evt.Sign(privkey); err != nil {
 		log.Print("[ERROR]", err)
-		return err
+		return nil, err
 	}
 
 	rly.BroadcastEvent(&evt)
@@ -148,7 +150,7 @@ func CreateMetadataNote(pubkey string, privkey string, feed *gofeed.Feed, profil
 
 	metrics.KindProfileMetadataCreated.Inc()
 	log.Printf("[DEBUG] metadata note for %s created with ID %s with createdat %d", feed.Title, evt.ID, evt.CreatedAt.Time().Unix())
-	return nil
+	return &evt, nil
 }
 
 func feedItemToNote_old(pubkey string, item *gofeed.Item, feed *gofeed.Feed, defaultCreatedAt time.Time, _ string, maxContentLength int) nostr.Event {
@@ -336,7 +338,7 @@ func CheckAllFeeds() {
 	newBookmarkCreated := false
 	currentEntities, err := GetEntities()
 	if err != nil {
-		log.Printf("[ERROR] could not retrieve entities: %s", err)
+		log.Printf("[ERROR] get entities: %s", err)
 		return
 	}
 
@@ -358,9 +360,23 @@ func CheckAllFeeds() {
 			continue
 		}
 
-		if err := CreateMetadataNote(currentEntity.PubKey, currentEntity.PrivateKey, parsedFeed, s.DefaultProfilePicUrl); err != nil {
-			log.Printf("[ERROR] could not create metadata note: %s", err)
-		}
+		/*
+			updateMetadataEvt := true
+
+			if existingMetaEvt, _ := getLocalMetadataEvent(currentEntity.PubKey); existingMetaEvt.ID != "" {
+				updateMetadataEvt = time.Now().Unix()-existingMetaEvt.CreatedAt.Time().Unix() > int64(s.FeedMetadataRefreshDays*86400)
+			}
+
+			if updateMetadataEvt {
+				if createdMetaEvt, err := CreateMetadataNote(currentEntity.PubKey, currentEntity.PrivateKey, parsedFeed, s.DefaultProfilePicUrl); err == nil {
+					if currentEntity.Blastr {
+						BlastNostrEventCh <- *createdMetaEvt
+					}
+				} else {
+					log.Printf("[ERROR] create metadata note: %s", err)
+				}
+			}
+		*/
 
 		for _, item := range parsedFeed.Items {
 			defaultCreatedAt := time.Unix(time.Now().Unix(), 0)

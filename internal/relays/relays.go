@@ -66,7 +66,7 @@ func InitRelay(cfg config.C) *khatru.Relay {
 		policyFilterBookmark,
 	)
 
-	if err := CreateMetadataNote(cfg.RelayPubkey, cfg.RelayPrivkey, &gofeed.Feed{Title: cfg.RelayName, Description: cfg.RelayDescription}, cfg.DefaultProfilePicUrl); err != nil {
+	if _, err := CreateMetadataNote(cfg.RelayPubkey, cfg.RelayPrivkey, &gofeed.Feed{Title: cfg.RelayName, Description: cfg.RelayDescription}, cfg.DefaultProfilePicUrl); err != nil {
 		log.Print("[ERROR] ", err)
 	}
 

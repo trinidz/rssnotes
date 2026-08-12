@@ -336,13 +336,9 @@ func (s *Server) createFeed(r *http.Request) *models.GUIEntry {
 		log.Print("[ERROR]", err)
 	}
 
-	if err := relays.CreateMetadataNote(validEntity.PubKey, validEntity.PrivateKey, parsedFeed, validEntity.IconURL); err != nil {
+	if _, err := relays.CreateMetadataNote(validEntity.PubKey, validEntity.PrivateKey, parsedFeed, validEntity.IconURL); err != nil {
 		log.Printf("[ERROR] creating metadata note %s", err)
 	}
-
-	// if _, metadataEvent, _ := getLocalMetadataEvent(publicKey); metadataEvent.ID != "" {
-	// 	publishNostrEventCh <- metadataEvent
-	// }
 
 	lastPostTime, allPostTimes := relays.InitFeed(validEntity.PubKey, validEntity.PrivateKey, validEntity.FeedURL, parsedFeed)
 
@@ -626,7 +622,7 @@ func (s *Server) importFeeds(opmlOutline []opml.Outline) []*models.GUIEntry {
 			log.Print("[ERROR] ", err)
 		}
 
-		if err := relays.CreateMetadataNote(publicKey, sk, parsedFeed, localImageURL); err != nil {
+		if _, err := relays.CreateMetadataNote(publicKey, sk, parsedFeed, localImageURL); err != nil {
 			log.Printf("[ERROR] creating metadata note %s", err)
 		}
 
