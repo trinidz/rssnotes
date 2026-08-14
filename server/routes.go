@@ -57,7 +57,8 @@ func (s *Server) handler() http.Handler {
 	r.For("/metricsDisplay", s.handleMetricsDisplay)
 	r.For("/log", s.handleLog)
 	r.For("/health", s.handleHealth)
-	r.For("/profile", s.handleProfile)
+	r.For("/profile", s.handleProfileBtn)
+	r.For("/profilesave", s.handleProfileSaveBtn)
 	r.For("/home", s.handleFrontpage)
 	r.For("/", func(c *router.Context) {
 		s.relay.ServeHTTP(c.Out, c.Req)
@@ -68,7 +69,7 @@ func (s *Server) handler() http.Handler {
 
 func (s *Server) handleFrontpage(c *router.Context) {
 	metrics.IndexRequests.Inc()
-	items, err := relays.GetSavedEntries()
+	items, err := relays.GetEntries()
 	if err != nil {
 		log.Print("[ERROR] ", err)
 		http.Error(c.Out, err.Error(), http.StatusInternalServerError)
@@ -127,42 +128,97 @@ func (s *Server) handleFrontpage(c *router.Context) {
 	}
 }
 
-func (s *Server) handleProfile(c *router.Context) {
+func (s *Server) handleProfileBtn(c *router.Context) {
 
 	feedPubkey := c.Req.URL.Query().Get("pubkey")
-	//fmt.Printf("[DEBUG] feed pubkey: %s\n", feedPubkey)
 
-	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/profile.html", s.Cfg.TemplatePath)))
-	//metrics.SearchRequests.Inc()
+	feedMetadata, _ := relays.GetLocalMetadataEvent(feedPubkey)
+	if feedMetadata.ID == "" {
+		log.Print("[ERROR] metadata event not found")
+		c.Out.WriteHeader(http.StatusNoContent) // 204 - No Content.
+		return
+	}
 
-	item, err := relays.GetEntity(feedPubkey)
-	if err != nil {
-		fmt.Printf("[ERROR] %s", err)
+	nostrProfile := models.Profile{}
+
+	if err := json.Unmarshal([]byte(feedMetadata.Content), &nostrProfile); err != nil {
+		log.Print("[ERROR] unmarshal profile: ", err)
+		c.Out.WriteHeader(http.StatusNoContent) // 204 - No Content.
+		return
 	}
 
 	data := struct {
-		DisplayName  string
-		Name         string
-		Nip05        string
-		LightningUrl string
-		IconUrl      string
-		BannerUrl    string
-		About        string
+		Profile models.Profile
+		Pubkey  string
 	}{
-		DisplayName:  "string",
-		Name:         item.FeedTitle,
-		Nip05:        "string",
-		LightningUrl: "string",
-		IconUrl:      item.IconURL,
-		BannerUrl:    "string",
-		About:        "string",
+		Profile: models.Profile{
+			DisplayName: nostrProfile.DisplayName,
+			Name:        nostrProfile.Name,
+			Nip05:       nostrProfile.Nip05,
+			Lud16:       nostrProfile.Lud16,
+			Picture:     nostrProfile.Picture,
+			Banner:      nostrProfile.Banner,
+			Website:     nostrProfile.Website,
+			About:       nostrProfile.About},
+		Pubkey: feedPubkey,
 	}
+
+	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/profile.html", s.Cfg.TemplatePath)))
 
 	if err := tmpl.Execute(c.Out, data); err != nil {
 		log.Print("[ERROR] ", err)
 		http.Error(c.Out, err.Error(), http.StatusInternalServerError)
 	}
+}
 
+func (s *Server) handleProfileSaveBtn(c *router.Context) {
+
+	if c.Req.Method != http.MethodPost {
+		c.JSON(http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+
+	body, err := io.ReadAll(c.Req.Body)
+	if err != nil {
+		log.Printf("[ERROR] Read body: %s", err)
+		c.JSON(http.StatusBadRequest, map[string]string{"error": "read body: " + err.Error()})
+		return
+	}
+
+	type ProfileSave struct {
+		Profile models.Profile `json:"profile"`
+		Pubkey  string         `json:"pubkey"`
+	}
+
+	req := ProfileSave{}
+	if err := json.Unmarshal(body, &req.Profile); err != nil {
+		log.Printf("[ERROR] profile decode: %s", err)
+		c.JSON(http.StatusInternalServerError, map[string]string{"error": "decode profile: " + err.Error()})
+		return
+	}
+
+	if err := json.Unmarshal(body, &req); err != nil {
+		log.Printf("[ERROR] profile pubkey decode: %s", err)
+		c.JSON(http.StatusInternalServerError, map[string]string{"error": "decode save profile: " + err.Error()})
+		return
+	}
+
+	metaEvt, err := relays.UpdateMetadataNote(req.Pubkey, req.Profile)
+	if err != nil {
+		log.Printf("[ERROR] update metadata: %s", err)
+		c.JSON(http.StatusInternalServerError, map[string]string{"error": "update profile: " + err.Error()})
+		return
+	}
+
+	if ent, err := relays.GetEntity(req.Pubkey); err == nil && ent.PubKey != "" {
+		if ent.Blastr {
+			relays.BlastNostrEventCh <- *metaEvt
+		}
+	} else {
+		log.Printf("[WARN] entity not found or getEntity err: %s", err)
+	}
+
+	c.JSON(http.StatusOK, map[string]string{"message": "Profile Saved!"})
 }
 
 func (s *Server) handleStatic(c *router.Context) {
@@ -176,7 +232,7 @@ func (s *Server) handleStatic(c *router.Context) {
 }
 
 func (s *Server) handleMetricsDisplay(c *router.Context) {
-	items, err := relays.GetSavedEntries()
+	items, err := relays.GetEntries()
 	if err != nil {
 		log.Print("[ERROR] ", err)
 		http.Error(c.Out, err.Error(), http.StatusInternalServerError)
@@ -336,7 +392,13 @@ func (s *Server) createFeed(r *http.Request) *models.GUIEntry {
 		log.Print("[ERROR]", err)
 	}
 
-	if _, err := relays.CreateMetadataNote(validEntity.PubKey, validEntity.PrivateKey, parsedFeed, validEntity.IconURL); err != nil {
+	if _, err := relays.CreateMetadataNote(validEntity.PubKey, validEntity.PrivateKey,
+		models.Profile{
+			Name:        validEntity.FeedTitle,
+			DisplayName: validEntity.FeedTitle,
+			About:       parsedFeed.Description,
+			Picture:     validEntity.IconURL,
+			Website:     validEntity.FeedURL}); err != nil {
 		log.Printf("[ERROR] creating metadata note %s", err)
 	}
 
@@ -347,7 +409,7 @@ func (s *Server) createFeed(r *http.Request) *models.GUIEntry {
 		models.WithLastCheckedTime(time.Now().Unix()),
 		models.WithAvgPostTime(relays.CalcAvgPostTime(allPostTimes)))
 
-	if err := relays.AddEntityToBookmarkEvent([]models.Entity{validEntity}); err != nil {
+	if err := relays.AddEntity([]models.Entity{validEntity}); err != nil {
 		log.Printf("[ERROR] feed entity %s not added to bookmark", validEntity.FeedTitle)
 	}
 
@@ -378,7 +440,7 @@ func handleDeleteFeed(c *router.Context) {
 		FollowEntity: models.Entity{PubKey: feedPubkey},
 	}
 	followManagmentCh <- followAction
-	if err := relays.DeleteEntityInBookmarkEvent(feedPubkey); err != nil {
+	if err := relays.DeleteEntity(feedPubkey); err != nil {
 		log.Printf("[ERROR] could not delete feed '%q'...Error: %s ", feedPubkey, err)
 	}
 
@@ -410,7 +472,7 @@ func handleBlastFeed(c *router.Context) {
 		currentBlastrState = "Private"
 	}
 
-	if err := relays.UpdateEntityInBookmarkEvent(feedPubkey, models.WithBlastr(newBlastrState)); err != nil {
+	if err := relays.UpdateEntity(feedPubkey, models.WithBlastr(newBlastrState)); err != nil {
 		log.Printf("[ERROR] blastr not set for feed '%s'...Error: %s", feedPubkey, err)
 		c.Out.Header().Add("HX-Refresh", "true") //will cause page to refresh
 		//http.Error(c.Out, "[ERROR] blastr not set", http.StatusBadRequest)
@@ -622,7 +684,13 @@ func (s *Server) importFeeds(opmlOutline []opml.Outline) []*models.GUIEntry {
 			log.Print("[ERROR] ", err)
 		}
 
-		if _, err := relays.CreateMetadataNote(publicKey, sk, parsedFeed, localImageURL); err != nil {
+		if _, err := relays.CreateMetadataNote(publicKey, sk,
+			models.Profile{
+				Name:        validEntity.FeedTitle,
+				DisplayName: validEntity.FeedTitle,
+				About:       parsedFeed.Description,
+				Picture:     validEntity.IconURL,
+				Website:     validEntity.FeedURL}); err != nil {
 			log.Printf("[ERROR] creating metadata note %s", err)
 		}
 
@@ -651,7 +719,7 @@ func (s *Server) importFeeds(opmlOutline []opml.Outline) []*models.GUIEntry {
 		importProgressCh <- ImportProgressStruct{EntryIndex: index, TotalEntries: len(opmlOutline)}
 	}
 
-	if err := relays.AddEntityToBookmarkEvent(bookmarkEntities); err != nil {
+	if err := relays.AddEntity(bookmarkEntities); err != nil {
 		log.Printf("[ERROR] adding feed entities: %s", err)
 	}
 
@@ -802,7 +870,7 @@ func (s *Server) handleSearch(c *router.Context) {
 		return
 	}
 
-	savedEntries, err := relays.GetSavedEntries()
+	savedEntries, err := relays.GetEntries()
 	if err != nil {
 		http.Error(c.Out, err.Error(), http.StatusInternalServerError)
 		return

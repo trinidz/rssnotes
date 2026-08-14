@@ -8,11 +8,11 @@ import (
 	"os"
 	"rssnotes/internal/config"
 	"rssnotes/internal/helpers"
+	"rssnotes/internal/models"
 
 	"github.com/fiatjaf/eventstore/badger"
 	"github.com/fiatjaf/khatru"
 	"github.com/fiatjaf/khatru/policies"
-	"github.com/mmcdole/gofeed"
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/nbd-wtf/go-nostr/nip19"
 	"github.com/skip2/go-qrcode"
@@ -45,7 +45,6 @@ func InitRelay(cfg config.C) *khatru.Relay {
 	rly.Info.Icon = cfg.RelayIcon
 
 	db.Path = cfg.DatabasePath
-	//os.MkdirAll(db.Path, 0755)
 	if err := db.Init(); err != nil {
 		log.Panicf("[FATAL] db init: %s", err)
 		return nil
@@ -66,7 +65,13 @@ func InitRelay(cfg config.C) *khatru.Relay {
 		policyFilterBookmark,
 	)
 
-	if _, err := CreateMetadataNote(cfg.RelayPubkey, cfg.RelayPrivkey, &gofeed.Feed{Title: cfg.RelayName, Description: cfg.RelayDescription}, cfg.DefaultProfilePicUrl); err != nil {
+	if _, err := CreateMetadataNote(cfg.RelayPubkey, cfg.RelayPrivkey,
+		models.Profile{
+			Name:        cfg.RelayName,
+			DisplayName: cfg.RelayName,
+			About:       cfg.RelayDescription,
+			Website:     cfg.RelayURL,
+			Picture:     cfg.RelayIcon}); err != nil {
 		log.Print("[ERROR] ", err)
 	}
 

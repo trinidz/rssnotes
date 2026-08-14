@@ -52,7 +52,7 @@ func parseFeedForPubkey(pubKey string, deleteFailingFeeds bool) (*gofeed.Feed, e
 
 	entity, err := GetEntity(pubKey)
 	if err != nil {
-		log.Printf("[ERROR] failed to retrieve entity with pubkey '%s': %v", pubKey, err)
+		log.Printf("[ERROR] failed to get entity with pubkey '%s': %v", pubKey, err)
 		return nil, err
 	}
 
@@ -82,7 +82,8 @@ func parseFeedForPubkey(pubKey string, deleteFailingFeeds bool) (*gofeed.Feed, e
 	return parsedFeed, nil
 }
 
-func CreateMetadataNote(pubkey string, privkey string, feed *gofeed.Feed, profilePictureUrl string) (*nostr.Event, error) {
+func CreateMetadataNote(pubkey string, privkey string, metaData models.Profile) (*nostr.Event, error) {
+
 	/*
 	   if feedMetadata, _ := getLocalMetadataEvent(pubkey); feedMetadata.ID != "" {
 	   		if time.Now().Unix()-feedMetadata.CreatedAt.Time().Unix() < int64(s.FeedMetadataRefreshDays*86400) {
@@ -92,35 +93,24 @@ func CreateMetadataNote(pubkey string, privkey string, feed *gofeed.Feed, profil
 	   	}
 	*/
 
-	var theDescription = feed.Description
-	var theFeedTitle = feed.Title
-	if strings.Contains(feed.Link, "reddit.com") {
-		var subredditParsePart1 = strings.Split(feed.Link, "/r/")
+	var theDescription = metaData.About
+	var theFeedTitle = metaData.Name
+	if strings.Contains(metaData.Website, "reddit.com") {
+		var subredditParsePart1 = strings.Split(metaData.Website, "/r/")
 		var subredditParsePart2 = strings.Split(subredditParsePart1[1], "/")
-		theDescription = feed.Description + fmt.Sprintf(" #%s", subredditParsePart2[0])
-
+		theDescription = metaData.About + fmt.Sprintf(" #%s", subredditParsePart2[0])
 		theFeedTitle = "/r/" + subredditParsePart2[0]
 	}
 
-	metadata := map[string]string{
-		"name":         theFeedTitle,
-		"about":        theDescription,
-		"display_name": theFeedTitle + " (RSS Feed)",
-		"website":      feed.Link,
-		"banner":       "",
-		"nip05":        "",
-		"lud16":        "",
+	metaData.Name = theFeedTitle
+	metaData.About = theDescription
+	metaData.DisplayName = theFeedTitle + " (RSS Feed)"
+
+	if metaData.Picture == "" {
+		metaData.Picture = s.DefaultProfilePicUrl
 	}
 
-	if profilePictureUrl != "" {
-		metadata["picture"] = profilePictureUrl
-	} else if feed.Image != nil {
-		metadata["picture"] = feed.Image.URL
-	} else {
-		metadata["picture"] = s.DefaultProfilePicUrl
-	}
-
-	content, err := json.Marshal(metadata)
+	content, err := json.Marshal(metaData)
 	if err != nil {
 		log.Print("[ERROR] marshaling metadata content", err)
 		return nil, err
@@ -132,7 +122,7 @@ func CreateMetadataNote(pubkey string, privkey string, feed *gofeed.Feed, profil
 		PubKey:    pubkey,
 		CreatedAt: nostr.Timestamp(createdAt),
 		Kind:      nostr.KindProfileMetadata,
-		Tags:      nostr.Tags{[]string{"proxy", feed.FeedLink, "rss"}},
+		Tags:      nostr.Tags{[]string{"proxy", metaData.Website, "rss"}},
 		Content:   string(content),
 	}
 	evt.ID = string(evt.Serialize())
@@ -149,7 +139,50 @@ func CreateMetadataNote(pubkey string, privkey string, feed *gofeed.Feed, profil
 	}
 
 	metrics.KindProfileMetadataCreated.Inc()
-	log.Printf("[DEBUG] metadata note for %s created with ID %s with createdat %d", feed.Title, evt.ID, evt.CreatedAt.Time().Unix())
+	log.Printf("[DEBUG] metadata note for %s created with ID %s with createdat %d", metaData.Name, evt.ID, evt.CreatedAt.Time().Unix())
+	return &evt, nil
+}
+
+func UpdateMetadataNote(pubkeyhex string, nostrProfile models.Profile) (*nostr.Event, error) {
+
+	// verify profile data here
+	// TODO
+
+	content, err := json.Marshal(nostrProfile)
+	if err != nil {
+		log.Print("[ERROR] marshaling metadata content", err)
+		return nil, err
+	}
+
+	entity, err := GetEntity(pubkeyhex)
+	if err != nil {
+		return nil, err
+	}
+
+	createdAt := nostr.Timestamp(time.Now().Unix())
+
+	evt := nostr.Event{
+		PubKey:    entity.PubKey,
+		CreatedAt: nostr.Timestamp(createdAt),
+		Kind:      nostr.KindProfileMetadata,
+		Tags:      nostr.Tags{[]string{"proxy", entity.FeedURL, "rss"}},
+		Content:   string(content),
+	}
+	evt.ID = string(evt.Serialize())
+
+	if err := evt.Sign(entity.PrivateKey); err != nil {
+		log.Print("[ERROR]", err)
+		return nil, err
+	}
+
+	rly.BroadcastEvent(&evt)
+
+	for _, store := range rly.StoreEvent {
+		store(context.TODO(), &evt)
+	}
+
+	metrics.KindProfileMetadataCreated.Inc()
+	log.Printf("[DEBUG] metadata note updated for %s created with ID %s with createdat %d", entity.FeedTitle, evt.ID, evt.CreatedAt.Time().Unix())
 	return &evt, nil
 }
 
@@ -360,23 +393,20 @@ func CheckAllFeeds() {
 			continue
 		}
 
-		/*
-			updateMetadataEvt := true
-
-			if existingMetaEvt, _ := getLocalMetadataEvent(currentEntity.PubKey); existingMetaEvt.ID != "" {
-				updateMetadataEvt = time.Now().Unix()-existingMetaEvt.CreatedAt.Time().Unix() > int64(s.FeedMetadataRefreshDays*86400)
-			}
-
-			if updateMetadataEvt {
-				if createdMetaEvt, err := CreateMetadataNote(currentEntity.PubKey, currentEntity.PrivateKey, parsedFeed, s.DefaultProfilePicUrl); err == nil {
-					if currentEntity.Blastr {
-						BlastNostrEventCh <- *createdMetaEvt
+		if currentEntity.Blastr {
+			if metadataEvt, _ := GetLocalMetadataEvent(currentEntity.PubKey); metadataEvt.ID != "" {
+				refreshMetadataEvt := time.Now().Unix()-metadataEvt.CreatedAt.Time().Unix() > int64(s.FeedMetadataRefreshDays*86400)
+				if refreshMetadataEvt {
+					var prof models.Profile
+					if err := json.Unmarshal([]byte(metadataEvt.Content), &prof); err == nil {
+						UpdateMetadataNote(currentEntity.PubKey, prof)
+						BlastNostrEventCh <- metadataEvt
+					} else {
+						log.Printf("[ERROR] blasting metadata: %s ", err)
 					}
-				} else {
-					log.Printf("[ERROR] create metadata note: %s", err)
 				}
 			}
-		*/
+		}
 
 		for _, item := range parsedFeed.Items {
 			defaultCreatedAt := time.Unix(time.Now().Unix(), 0)
@@ -409,7 +439,7 @@ func CheckAllFeeds() {
 			allPostTimes = append(allPostTimes, evt.CreatedAt.Time().Unix())
 		}
 
-		if err := UpdateEntityInBookmarkEvent(currentEntity.PubKey,
+		if err := UpdateEntity(currentEntity.PubKey,
 			models.WithLastPostTime(lastPostTime),
 			models.WithLastCheckedTime(time.Now().Unix()),
 			models.WithAvgPostTime(CalcAvgPostTime(allPostTimes))); err != nil {

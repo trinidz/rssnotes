@@ -28,6 +28,18 @@ type GUIEntry struct {
 	ErrorCode      int
 }
 
+// nostr profile metadata
+type Profile struct {
+	DisplayName string `json:"display_name"`
+	Name        string `json:"name"`
+	Nip05       string `json:"nip05"`
+	Lud16       string `json:"lud16"`
+	Banner      string `json:"banner"`
+	About       string `json:"about"`
+	Picture     string `json:"picture"`
+	Website     string `json:"website"`
+}
+
 // Option is a function that applies a modification to an Entity.
 // It now returns an error if validation fails.
 type Option func(*Entity) error

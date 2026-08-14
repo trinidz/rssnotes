@@ -4,15 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width-width, initial-scale=1.0">
     <link rel="icon" type="image/x-icon" href="./assets/static/favicon.ico">
+    <link rel="stylesheet" href="./assets/css/darkmode.css">
     <script src="./assets/js/htmx.min.js"></script>
-    <link rel="stylesheet" href="./assets/css/darkmode_style.css">
     <title>{{.RelayName}}</title>
 </head>
 <body>
     <!-- Company Logo -->
     <div class="company-logo">
         <img src="./assets/static/rssnotes-logo.png"
-                    alt="{{.RelayName}}: comvert RSS or Atom feeds into Nostr profiles" width="112" height="28">
+                    alt="{{.RelayName}}: convert RSS or Atom feeds into Nostr profiles" width="112" height="28">
     </div>
 
     <!-- Top Navigation Menu -->
@@ -145,8 +145,28 @@
 
     <!-- Card Grid -->
     <div class="card-container" id="card-grid" hx-target="closest article" hx-swap="outerHTML swap:1s">
+
+        <!-- Relay Card -->
+        <article class="card">
+            <div class="card-icon"><img src="./assets/static/favicon.ico" alt="👤"></div>
+            <h2 class="card-title">{{.RelayName}}</h2>
+            
+            <div class="qr-container">
+                <img src="./assets/qrcodes/{{.RelayNPubkey}}.png" data-copy="{{.RelayNPubkey}}" alt="npub qrcode">
+            </div>
+
+            <div class="card-divider"></div>
+
+            <div class="card-actions"> 
+                <button class="btn btn-profile" onclick="window.location.href='./profile?pubkey={{.RelayPubkey}}'">
+                    <span class="btn-icon">👤</span>
+                    Profile
+                </button> 
+            </div>
+        </article>
+
+        <!-- feed cards -->
         {{range .Entries}}
-        <!-- Card 1 -->
         <article class="card">
             <div class="card-icon"><img src="{{.BookmarkEntity.IconURL}}" alt="👤"></div>
             <h2 class="card-title">{{ .BookmarkEntity.FeedTitle }}</h2>
@@ -157,13 +177,11 @@
 
             <div class="card-divider"></div>
 
-            <div class="card-actions">
-                <!--                 
+            <div class="card-actions"> 
                 <button class="btn btn-profile" onclick="window.location.href='./profile?pubkey={{.BookmarkEntity.PubKey}}'">
                     <span class="btn-icon">👤</span>
                     Profile
                 </button> 
-                -->
                 <button class="btn btn-public" hx-target="closest button" hx-confirm="Are you sure?"
                             hx-get="./blastfeed?pubkey={{.BookmarkEntity.PubKey}}&blastr={{if .BookmarkEntity.Blastr}}Public{{else}}Private{{end}}">
                     <span class="btn-icon">🌍</span>
@@ -226,6 +244,7 @@
             </div>
         </div>
     </footer>
+
     <script src="./assets/js/copyclipboard.js"></script>
     <script src="./assets/js/progressbar.js"></script>
 </body>

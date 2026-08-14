@@ -1,5 +1,5 @@
 APP_NAME := rssnotes
-APP_VERSION := v0.1.1
+APP_VERSION := v0.1.2
 GIT_TAG := $(shell git describe --tags)
 GIT_HASH = $(shell git rev-parse --short=8 HEAD)
 RELEASE_DATE = $(shell date)
@@ -18,4 +18,3 @@ binary_release:
 
 test:
 	@go test -v ./...
-

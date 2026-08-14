@@ -20,7 +20,7 @@ import (
 const KIND_BOOKMARKS int = 10003 //NIP-51
 var BlastNostrEventCh = make(chan nostr.Event, 50)
 
-// get nostr event from local relay.
+// get nostr events from local relay.
 // events are returned in an array sorted from oldest [len-1] to most current [0] event
 func getLocalEvents(localFilter nostr.Filter) ([]*nostr.Event, error) {
 	ctx := context.TODO()
@@ -52,7 +52,7 @@ func getLocalEvents(localFilter nostr.Filter) ([]*nostr.Event, error) {
 	return events, nil
 }
 
-// gets the most current bookmark event
+// get the most recent bookmark event
 func getBookMarkEvent() (*nostr.Event, error) {
 	filter := nostr.Filter{
 		Kinds:   []int{KIND_BOOKMARKS},
@@ -73,7 +73,7 @@ func getBookMarkEvent() (*nostr.Event, error) {
 }
 
 // get kind-0 metadata event of a pubkey
-func getLocalMetadataEvent(pubkey string) (nostr.Event, error) {
+func GetLocalMetadataEvent(pubkey string) (nostr.Event, error) {
 
 	metaDataFilter := nostr.Filter{
 		Kinds:   []int{nostr.KindProfileMetadata},
@@ -91,140 +91,7 @@ func getLocalMetadataEvent(pubkey string) (nostr.Event, error) {
 		return nostr.Event{}, nil
 	}
 
-	/*
-		// Nostr Kind-0
-		type KindProfileMetadata struct {
-			About   string
-			Picture string
-			Name    string
-		}
-	*/
-
-	/*
-		profileData := models.KindProfileMetadata{}
-		   	if err := json.Unmarshal([]byte(metaData[0].Content), &profileData); err != nil {
-		   		log.Print("[ERROR]", err)
-		   		return nostr.Event{}, err
-		   	}
-	*/
-
 	return *metaData[0], nil
-}
-
-func getRemoteFollows(pubkeyHex string) nostr.Tags {
-	var outputFollows []nostr.Tag
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	pubKeyAlreadyExists := false
-	defer cancel()
-
-	filters := []nostr.Filter{{
-		Authors: []string{pubkeyHex},
-		Kinds:   []int{nostr.KindFollowList},
-	}}
-
-	relayEvents := make([]nostr.RelayEvent, 0)
-	for ev := range pool.SubManyEose(timeoutCtx, seedRelays, filters) {
-		relayEvents = append(relayEvents, ev)
-	}
-
-	if len(relayEvents) > 0 {
-		sort.SliceStable(relayEvents, func(i, j int) bool {
-			return relayEvents[i].CreatedAt > relayEvents[j].CreatedAt
-		})
-
-		log.Printf("[DEBUG] kind-3 found in %s with createdat %s with %d follows", relayEvents[0].Relay.URL, relayEvents[0].Event.CreatedAt.Time().String(), len(relayEvents[0].Event.Tags.GetAll([]string{"p"})))
-
-		for _, remoteFollow := range relayEvents[0].Event.Tags.GetAll([]string{"p"}) {
-			for _, outputFollow := range outputFollows {
-				if outputFollow.Value() == remoteFollow.Value() || len(remoteFollow.Value()) != 64 || len(remoteFollow) != 2 {
-					pubKeyAlreadyExists = true
-					break
-				}
-			}
-			if !pubKeyAlreadyExists {
-				outputFollows = append(outputFollows, remoteFollow)
-			}
-			pubKeyAlreadyExists = false
-		}
-	} else {
-		log.Print("[DEBUG] no remote follows found")
-		return nil
-	}
-
-	return outputFollows
-}
-
-func getLocalFollows() nostr.Tags {
-	var localFollows []nostr.Tag
-
-	savedEnts, err := GetEntities()
-	if err != nil {
-		log.Printf("[ERROR] Can not get local follows %s", err)
-		return nil
-	}
-
-	for _, savedEnt := range savedEnts {
-		localFollows = append(localFollows, nostr.Tag{"p", savedEnt.PubKey})
-	}
-
-	return localFollows
-}
-
-func getUniqueFollows(followListA nostr.Tags, followListB nostr.Tags) nostr.Tags {
-	var uniqueFollows []nostr.Tag
-	badPubkey := false
-
-	uniqueFollows = append(uniqueFollows, followListB...)
-
-	for _, followA := range followListA {
-		for _, followB := range followListB {
-			if len(followA) != 2 || len(followB) != 2 ||
-				followA.Key() != "p" || followB.Key() != "p" ||
-				len(followA.Value()) != 64 || len(followB.Value()) != 64 ||
-				followA.Value() == followB.Value() {
-				badPubkey = true
-				break
-			}
-		}
-		if !badPubkey {
-			uniqueFollows = append(uniqueFollows, nostr.Tag{"p", followA.Value()})
-		}
-		badPubkey = false
-	}
-	return uniqueFollows
-}
-
-// delete a follow from local kind 3 event
-func deleteLocalFollow(pubkeyHex string) nostr.Tags {
-	localFollows := getLocalFollows()
-
-	for i, localFollow := range localFollows {
-		if localFollow.Value() == pubkeyHex {
-			copy(localFollows[i:], localFollows[i+1:])
-			localFollows[len(localFollows)-1] = nostr.Tag{}
-			localFollows = localFollows[:len(localFollows)-1]
-
-			return localFollows
-		}
-	}
-
-	return nil
-}
-
-func deleteRemoteFollow(pubkeyHex string) nostr.Tags {
-	remoteFollows := getRemoteFollows(s.RelayPubkey)
-
-	for i, remoteFollow := range remoteFollows {
-		if remoteFollow.Value() == pubkeyHex {
-			copy(remoteFollows[i:], remoteFollows[i+1:])
-			remoteFollows[len(remoteFollows)-1] = nostr.Tag{}
-			remoteFollows = remoteFollows[:len(remoteFollows)-1]
-
-			return remoteFollows
-		}
-	}
-
-	return nil
 }
 
 // TRUE if feed exists in bookmark event
@@ -448,7 +315,7 @@ func BlastWorker(queue <-chan nostr.Event) {
 }
 
 // adds entities to bookmark event
-func AddEntityToBookmarkEvent(entitiesToAdd []models.Entity) error {
+func AddEntity(entitiesToAdd []models.Entity) error {
 	if len(entitiesToAdd) == 0 {
 		return nil
 	}
@@ -496,7 +363,7 @@ func AddEntityToBookmarkEvent(entitiesToAdd []models.Entity) error {
 }
 
 // change properties of an entity
-func UpdateEntityInBookmarkEvent(entityPubkey string, opts ...models.Option) error {
+func UpdateEntity(entityPubkey string, opts ...models.Option) error {
 
 	if !nostr.IsValidPublicKey(entityPubkey) {
 		return fmt.Errorf("[ERROR] bad pubkey: %s", entityPubkey)
@@ -566,7 +433,7 @@ func UpdateEntityInBookmarkEvent(entityPubkey string, opts ...models.Option) err
 	return nil
 }
 
-func DeleteEntityInBookmarkEvent(entityPubkey string) error {
+func DeleteEntity(entityPubkey string) error {
 
 	if !nostr.IsValidPublicKey(entityPubkey) {
 		return fmt.Errorf("[ERROR] bad pubkey: %s", entityPubkey)
@@ -640,21 +507,7 @@ func DeleteEntityInBookmarkEvent(entityPubkey string) error {
 	return nil
 }
 
-func GetSavedEntries() ([]models.GUIEntry, error) {
-
-	/* 	var bookMarkTags nostr.Tags
-	   	var rsslayEntity models.Entity
-
-	   	bookmarkFilter := nostr.Filter{
-	   		Kinds:   []int{KIND_BOOKMARKS},
-	   		Authors: []string{s.RelayPubkey},
-	   	}
-
-	   	bookMarkEvts, err := getLocalEvents(bookmarkFilter)
-	   	if err != nil {
-	   		log.Printf("[ERROR] GetLocalEvent %s", err)
-	   		return []models.GUIEntry{}, err
-	   	} */
+func GetEntries() ([]models.GUIEntry, error) {
 
 	var localEntries []models.GUIEntry
 
@@ -668,25 +521,10 @@ func GetSavedEntries() ([]models.GUIEntry, error) {
 		localEntries = append(localEntries, models.GUIEntry{BookmarkEntity: ent})
 	}
 
-	/* 	if len(bookMarkEvts) > 0 {
-	   		bookMarkTags = bookMarkEvts[0].Tags.GetAll([]string{s.RsslayTagKey})
-	   		for _, tag := range bookMarkTags {
-
-	   			if err := json.Unmarshal([]byte(tag.Value()), &rsslayEntity); err != nil {
-	   				log.Printf("[ERROR] %s", err)
-	   			}
-
-	   			localEntries = append(localEntries, models.GUIEntry{
-	   				BookmarkEntity: rsslayEntity,
-	   			})
-	   		}
-	   	} else {
-	   		log.Printf("[DEBUG] no saved feedURL entries")
-	   	} */
 	return localEntries, nil
 }
 
-// get an entity by its pubkey
+// get entity by its pubkey
 func GetEntity(pubkeyHex string) (models.Entity, error) {
 
 	if !nostr.IsValidPublicKey(pubkeyHex) {
@@ -747,4 +585,120 @@ func GetEntities() ([]models.Entity, error) {
 	}
 
 	return entities, nil
+}
+
+func getRemoteFollows(pubkeyHex string) nostr.Tags {
+	var outputFollows []nostr.Tag
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	pubKeyAlreadyExists := false
+	defer cancel()
+
+	filters := []nostr.Filter{{
+		Authors: []string{pubkeyHex},
+		Kinds:   []int{nostr.KindFollowList},
+	}}
+
+	relayEvents := make([]nostr.RelayEvent, 0)
+	for ev := range pool.SubManyEose(timeoutCtx, seedRelays, filters) {
+		relayEvents = append(relayEvents, ev)
+	}
+
+	if len(relayEvents) > 0 {
+		sort.SliceStable(relayEvents, func(i, j int) bool {
+			return relayEvents[i].CreatedAt > relayEvents[j].CreatedAt
+		})
+
+		log.Printf("[DEBUG] kind-3 found in %s with createdat %s with %d follows", relayEvents[0].Relay.URL, relayEvents[0].Event.CreatedAt.Time().String(), len(relayEvents[0].Event.Tags.GetAll([]string{"p"})))
+
+		for _, remoteFollow := range relayEvents[0].Event.Tags.GetAll([]string{"p"}) {
+			for _, outputFollow := range outputFollows {
+				if outputFollow.Value() == remoteFollow.Value() || len(remoteFollow.Value()) != 64 || len(remoteFollow) != 2 {
+					pubKeyAlreadyExists = true
+					break
+				}
+			}
+			if !pubKeyAlreadyExists {
+				outputFollows = append(outputFollows, remoteFollow)
+			}
+			pubKeyAlreadyExists = false
+		}
+	} else {
+		log.Print("[DEBUG] no remote follows found")
+		return nil
+	}
+
+	return outputFollows
+}
+
+func getLocalFollows() nostr.Tags {
+	var localFollows []nostr.Tag
+
+	savedEnts, err := GetEntities()
+	if err != nil {
+		log.Printf("[ERROR] Can not get local follows %s", err)
+		return nil
+	}
+
+	for _, savedEnt := range savedEnts {
+		localFollows = append(localFollows, nostr.Tag{"p", savedEnt.PubKey})
+	}
+
+	return localFollows
+}
+
+func getUniqueFollows(followListA nostr.Tags, followListB nostr.Tags) nostr.Tags {
+	var uniqueFollows []nostr.Tag
+	badPubkey := false
+
+	uniqueFollows = append(uniqueFollows, followListB...)
+
+	for _, followA := range followListA {
+		for _, followB := range followListB {
+			if len(followA) != 2 || len(followB) != 2 ||
+				followA.Key() != "p" || followB.Key() != "p" ||
+				len(followA.Value()) != 64 || len(followB.Value()) != 64 ||
+				followA.Value() == followB.Value() {
+				badPubkey = true
+				break
+			}
+		}
+		if !badPubkey {
+			uniqueFollows = append(uniqueFollows, nostr.Tag{"p", followA.Value()})
+		}
+		badPubkey = false
+	}
+	return uniqueFollows
+}
+
+// delete a follow from local kind 3 event
+func deleteLocalFollow(pubkeyHex string) nostr.Tags {
+	localFollows := getLocalFollows()
+
+	for i, localFollow := range localFollows {
+		if localFollow.Value() == pubkeyHex {
+			copy(localFollows[i:], localFollows[i+1:])
+			localFollows[len(localFollows)-1] = nostr.Tag{}
+			localFollows = localFollows[:len(localFollows)-1]
+
+			return localFollows
+		}
+	}
+
+	return nil
+}
+
+func deleteRemoteFollow(pubkeyHex string) nostr.Tags {
+	remoteFollows := getRemoteFollows(s.RelayPubkey)
+
+	for i, remoteFollow := range remoteFollows {
+		if remoteFollow.Value() == pubkeyHex {
+			copy(remoteFollows[i:], remoteFollows[i+1:])
+			remoteFollows[len(remoteFollows)-1] = nostr.Tag{}
+			remoteFollows = remoteFollows[:len(remoteFollows)-1]
+
+			return remoteFollows
+		}
+	}
+
+	return nil
 }

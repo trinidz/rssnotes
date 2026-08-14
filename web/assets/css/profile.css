@@ -1,0 +1,172 @@
+ 
+        :root {
+            --bg-body: #121212;
+            --bg-card: #1e1e1e;
+            --bg-input: #2c2c2c;
+            --text-main: #e0e0e0;
+            --text-muted: #a0a0a0;
+            --accent: #6c5ce7;
+            --accent-hover: #5649c0;
+            --border: #333333;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .profile-container {
+            background-color: var(--bg-card);
+            width: 100%;
+            max-width: 600px;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        /* Banner Section */
+        .banner-wrapper {
+            height: 180px;
+            background-color: var(--bg-input);
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+
+        /* Avatar Section */
+        .avatar-wrapper {
+            display: flex;
+            justify-content: flex-start;
+            padding: 0 24px;
+            margin-top: -60px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 4px solid var(--bg-card);
+            background-size: cover;
+            background-position: center;
+            background-color: var(--bg-input);
+        }
+
+        /* Form Content */
+        .form-content {
+            padding: 20px 24px 32px;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 4px;
+        }
+
+        .handle {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 24px;
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-muted);
+        }
+
+        input[type="text"],
+        input[type="url"],
+        input[type="email"],
+        textarea {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-main);
+            font-size: 1rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.2);
+        }
+
+        /* Fixed height for About section */
+        textarea {
+            resize: none;
+            height: 120px;
+        }
+
+        .helper-text {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        /* Action Buttons */
+        .actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--bg-input);
+            color: var(--text-main);
+        }
+
+        .btn-primary {
+            background-color: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+  

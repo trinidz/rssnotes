@@ -47,7 +47,7 @@ func NewServer(cfg config.C) *Server {
 
 func (s *Server) Serve() http.Handler {
 	if s.Cfg == nil {
-		log.Panic("[ERROR] Server() envconfig or KhatruRelay not set")
+		log.Panic("[FATAL] Server() envconfig not set")
 		return nil
 	}
 	return s.handler()

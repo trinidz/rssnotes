@@ -3,243 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Profile</title>
-    <style>
-        :root {
-            --bg-body: #121212;
-            --bg-card: #1e1e1e;
-            --bg-input: #2c2c2c;
-            --text-main: #e0e0e0;
-            --text-muted: #a0a0a0;
-            --accent: #6c5ce7;
-            --accent-hover: #5649c0;
-            --border: #333333;
-            --shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        }
-
-        body {
-            background-color: var(--bg-body);
-            color: var(--text-main);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .profile-container {
-            background-color: var(--bg-card);
-            width: 100%;
-            max-width: 600px;
-            border-radius: 16px;
-            box-shadow: var(--shadow);
-            overflow: hidden;
-            border: 1px solid var(--border);
-        }
-
-        /* Banner Section */
-        .banner-wrapper {
-            height: 180px;
-            background-color: var(--bg-input);
-            background-size: cover;
-            background-position: center;
-            position: relative;
-        }
-
-        /* Avatar Section */
-        .avatar-wrapper {
-            display: flex;
-            justify-content: flex-start;
-            padding: 0 24px;
-            margin-top: -60px;
-            position: relative;
-            z-index: 2;
-        }
-
-        .avatar {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            border: 4px solid var(--bg-card);
-            background-size: cover;
-            background-position: center;
-            background-color: var(--bg-input);
-        }
-
-        /* Form Content */
-        .form-content {
-            padding: 20px 24px 32px;
-        }
-
-        h1 {
-            font-size: 1.5rem;
-            margin-bottom: 4px;
-        }
-
-        .handle {
-            color: var(--text-muted);
-            font-size: 0.9rem;
-            margin-bottom: 24px;
-            display: block;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: var(--text-muted);
-        }
-
-        input[type="text"],
-        input[type="url"],
-        input[type="email"],
-        textarea {
-            width: 100%;
-            padding: 12px;
-            background-color: var(--bg-input);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--text-main);
-            font-size: 1rem;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-
-        input:focus,
-        textarea:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.2);
-        }
-
-        /* Fixed height for About section */
-        textarea {
-            resize: none;
-            height: 120px;
-        }
-
-        .helper-text {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            margin-top: 6px;
-        }
-
-        /* Action Buttons */
-        .actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 12px;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid var(--border);
-        }
-
-        .btn {
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            border: none;
-            font-size: 0.95rem;
-            transition: all 0.2s;
-        }
-
-        .btn-secondary {
-            background-color: transparent;
-            color: var(--text-muted);
-            border: 1px solid var(--border);
-        }
-
-        .btn-secondary:hover {
-            background-color: var(--bg-input);
-            color: var(--text-main);
-        }
-
-        .btn-primary {
-            background-color: var(--accent);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background-color: var(--accent-hover);
-            transform: translateY(-1px);
-        }
-    </style>
+    <title>Nostr Profile</title>
+    <link rel="stylesheet" href="./assets/css/profile.css">
+    <link rel="stylesheet" href="./assets/css/modal.css">
 </head>
 <body>
-
     <div class="profile-container">
         <!-- Banner Section -->
-        <div class="banner-wrapper" id="bannerPreview" style="background-image: url('https://relay.dzarchivo.org/72cb99b689b4cfe1a9fb6937f779f3f9c65094bf0e6ac72a8f8261efa96653f5.png');">
+        <div class="banner-wrapper" id="bannerPreview" style="background-image: url('{{.Profile.Banner}}');">
+        <!-- <div class="banner-wrapper" id="bannerPreview" style="background-image: url('https://placehold.co/150x150/6c5ce7/ffffff?text=Banner');"> -->
         </div>
 
         <!-- Avatar Section -->
         <div class="avatar-wrapper">
-            <div class="avatar" id="avatarPreview" style="background-image: url('./assets/static/apple-touch-icon.png');"></div>
+            <div class="avatar" id="avatarPreview" style="background-image: url('{{.Profile.Picture}}');"></div>
             <!-- <div class="avatar" id="avatarPreview" style="background-image: url('https://placehold.co/150x150/6c5ce7/ffffff?text=User');"></div> -->
         </div>
 
         <!-- Form Section -->
         <div class="form-content">
-            <form>
+            <form id="profile-form">
                 <h1>Edit Profile</h1>
-                <span class="handle">@username</span>
-
-                <div class="form-group">
-                    <label for="displayName">Display Name</label>
-                    <input type="text" id="displayName" name="displayName" placeholder="e.g. John Doe" value="John Doe">
-                </div>
+                <span class="handle">@{{.Pubkey}}</span>
+                <input type="text" id="pubkey" name="pubkey" style="visibility: hidden; display: none;" value={{.Pubkey}}>
 
                 <div class="form-group">
                     <label for="name">Name</label>
-                    <input type="text" id="name" name="name" placeholder="Full legal name" value="{{.Name}}">
+                    <input type="text" id="name" name="name" placeholder="Full legal name" value="{{.Profile.Name}}">
+                </div>
+
+                <div class="form-group">
+                    <label for="display_name">Display Name</label>
+                    <input type="text" id="display_name" name="display_name" placeholder="e.g. John Doe" value="{{.Profile.DisplayName}}">
                 </div>
 
                 <div class="form-group">
                     <label for="nip05">NIP-05</label>
-                    <input type="text" id="nip05" name="nip05" placeholder="name@example.com">
+                    <input type="text" id="nip05" name="nip05" placeholder="name@example.com" value="{{.Profile.Nip05}}">
                     <div class="helper-text">Nostr Identity Verification</div>
                 </div>
 
                 <div class="form-group">
-                    <label for="lightning">Lightning Address</label>
-                    <input type="text" id="lightning" name="lightning" placeholder="name@getalby.com">
+                    <label for="lud16">Lightning Address</label>
+                    <input type="text" id="lud16" name="lud16" placeholder="name@getalby.com" value="{{.Profile.Lud16}}">
                     <div class="helper-text">For receiving sats</div>
                 </div>
 
                 <div class="form-group">
-                    <label for="bannerUrl">Banner Image URL</label>
-                    <input type="url" id="bannerUrl" name="bannerUrl" placeholder="https://example.com/banner.jpg">
+                    <label for="banner">Banner Image URL</label>
+                    <input type="url" id="banner" name="banner" placeholder="https://example.com/banner.jpg" value="{{.Profile.Banner}}">
                 </div>
 
                 <div class="form-group">
-                    <label for="iconUrl">Profile Icon URL</label>
-                    <input type="url" id="iconUrl" name="iconUrl" placeholder="https://example.com/avatar.jpg" value="{{.IconUrl}}">
+                    <label for="picture">Profile Icon URL</label>
+                    <input type="url" id="picture" name="picture" placeholder="https://example.com/avatar.jpg" value="{{.Profile.Picture}}">
+                </div>
+
+                <div class="form-group">
+                    <label for="website">Website URL</label>
+                    <input type="url" id="website" name="website" placeholder="https://example.mywebsite.com" value="{{.Profile.Website}}">
                 </div>
 
                 <div class="form-group">
                     <label for="about">About</label>
-                    <textarea id="about" name="about" placeholder="Tell us a little about yourself..."></textarea>
+                    <textarea id="about" name="about" placeholder="Tell us a little about yourself...">{{.Profile.About}}</textarea>
                 </div>
 
                 <div class="actions">
-                    <button type="button" class="btn btn-secondary" onclick="window.location.href='/home'" >Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="button" class="btn btn-secondary" onclick="window.location.href='./home'" >Cancel</button>
+                    <button type="button" class="btn btn-primary" id="save-profile-btn">Save Changes</button>
                 </div>
             </form>
         </div>
     </div>
+ 
+    <!-- Modal Container -->
+    <div id="custom-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Title</h3>
+                <button id="modal-close" class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="modal-message">Status Message Here</p>
+            </div>
+            <div class="modal-footer" id="modal-footer">
+                <!-- Buttons will be injected here by JS -->
+            </div>
+        </div>
+    </div>
 
+    <script src="./assets/js/profile.js"></script>
+    <script src="./assets/js/modal.js"></script>
 </body>
 </html>
