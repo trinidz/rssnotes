@@ -43,14 +43,14 @@ func (s *Server) handler() http.Handler {
 	r := router.NewRouter(s.Cfg.RelayBasepath)
 
 	r.For("/assets/*path", s.handleStatic)
-	r.For("/create", s.handleCreateFeed)
+	r.For("/create", s.handleGeneratePubkeyBtn)
+	r.For("/search", s.handleSearchBtn)
 	r.For("/blastfeed", handleBlastFeed)
 	r.For("/import", s.handleImportOpml)
-	r.For("/search", s.handleSearch)
-	r.For("/progress", s.handleImportProgress)
+	r.For("/progress", handleImportProgress)
 	r.For("/detail", s.handleImportDetail)
 	r.For("/export", s.handleExportOpml)
-	r.For("/delete", handleDeleteFeed)
+	r.For("/delete", handleDeleteBtn)
 	r.For("/metrics", func(c *router.Context) {
 		promhttp.Handler().ServeHTTP(c.Out, c.Req)
 	})
@@ -258,7 +258,7 @@ func (s *Server) handleMetricsDisplay(c *router.Context) {
 	}
 }
 
-func (s *Server) handleCreateFeed(c *router.Context) {
+func (s *Server) handleGeneratePubkeyBtn(c *router.Context) {
 	metrics.CreateRequests.Inc()
 	entry := s.createFeed(c.Req)
 
@@ -431,7 +431,7 @@ func (s *Server) createFeed(r *http.Request) *models.GUIEntry {
 	return &guientry
 }
 
-func handleDeleteFeed(c *router.Context) {
+func handleDeleteBtn(c *router.Context) {
 	metrics.DeleteRequests.Inc()
 	feedPubkey := c.Req.URL.Query().Get("pubkey")
 
@@ -732,7 +732,7 @@ func (s *Server) importFeeds(opmlOutline []opml.Outline) []*models.GUIEntry {
 	return importedEntries
 }
 
-func (s *Server) handleImportProgress(c *router.Context) {
+func handleImportProgress(c *router.Context) {
 	importedURL := <-importProgressCh
 	progressPct := ((float32(importedURL.EntryIndex) + 1.0) / float32(importedURL.TotalEntries)) * 100.0
 
@@ -749,7 +749,6 @@ func (s *Server) handleImportProgress(c *router.Context) {
 }
 
 func (s *Server) handleImportDetail(c *router.Context) {
-	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/imported.html", s.Cfg.TemplatePath)))
 
 	numBadFeeds := 0
 	for _, feed := range recentImportedEntries {
@@ -775,6 +774,8 @@ func (s *Server) handleImportDetail(c *router.Context) {
 		BadFeeds:     numBadFeeds,
 		Version:      config.Version,
 	}
+
+	tmpl := template.Must(template.ParseFiles(fmt.Sprintf("%s/imported.html", s.Cfg.TemplatePath)))
 
 	if err := tmpl.Execute(c.Out, results); err != nil {
 		log.Print("[ERROR] ", err)
@@ -821,7 +822,7 @@ func (s *Server) handleExportOpml(c *router.Context) {
 	fmt.Fprintf(c.Out, "%s", outp)
 }
 
-func (s *Server) handleSearch(c *router.Context) {
+func (s *Server) handleSearchBtn(c *router.Context) {
 
 	/* 	funcs := template.FuncMap{
 		"shortURL": func(urlLink string) string {

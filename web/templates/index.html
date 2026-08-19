@@ -5,6 +5,7 @@
     <meta name="viewport" content="width-width, initial-scale=1.0">
     <link rel="icon" type="image/x-icon" href="./assets/static/favicon.ico">
     <link rel="stylesheet" href="./assets/css/darkmode.css">
+    <link rel="stylesheet" href="./assets/css/modal.css">
     <script src="./assets/js/htmx.min.js"></script>
     <title>{{.RelayName}}</title>
 </head>
@@ -231,6 +232,22 @@
         </article> -->
 
     </div>
+
+    <!-- Modal Container -->
+    <div id="custom-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Title</h3>
+                <button id="modal-close" class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="modal-message">Status Message Here</p>
+            </div>
+            <div class="modal-footer" id="modal-footer">
+                <!-- Buttons will be injected here by JS -->
+            </div>
+        </div>
+    </div>
     
     <!-- Footer Section -->
     <footer class="site-footer">
@@ -247,5 +264,6 @@
 
     <script src="./assets/js/copyclipboard.js"></script>
     <script src="./assets/js/progressbar.js"></script>
+    <script src="./assets/js/modal.js"></script>
 </body>
 </html>
