@@ -128,4 +128,4 @@ sudo systemctl enable rssnotes
 13. Go to http://<your-host-ip-address:3334/home> in your browser. Add the rssnotes relay to your client at ws://<your-host-ip-address:3334>. 
 
 ## Upgrading
-- Make sure to export all your feeds before upgrading.  If anyting goes wrong you can create a new rssnotes relay and import all your existing feeds.
+- Make sure to export all your feeds before upgrading.  If anyting goes wrong you can create a new rssnotes relay and import your existing feeds.
