@@ -267,24 +267,6 @@ func UpdateFollowListEvent(followAction models.FollowManagment) {
 	log.Print("[DEBUG] 🫂 new follow list size: ", len(currentOneHopNetwork))
 }
 
-/*
-func BlastEvent(ev *nostr.Event) {
-	ctx := context.Background()
-	for _, url := range seedRelays {
-		ctx, cancel := context.WithTimeout(ctx, time.Second*5)
-		relay, err := pool.EnsureRelay(url)
-		if err != nil {
-			cancel()
-			log.Printf("[ERROR] %s", err)
-			continue
-		}
-		relay.Publish(ctx, *ev)
-		cancel()
-	}
-	metrics.NotesBlasted.Inc()
-	log.Print("[INFO] 🔫 blasted event ID ", ev.ID, "to ", len(seedRelays), " relays")
-} */
-
 func BlastWorker(queue <-chan nostr.Event) {
 	ctx := context.Background()
 	for ev := range queue {

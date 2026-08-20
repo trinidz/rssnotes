@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"html"
 	"log"
 	"net/url"
 	"rssnotes/internal/helpers"
@@ -17,9 +16,7 @@ import (
 	"strings"
 	"time"
 
-	md "github.com/JohannesKaufmann/html-to-markdown"
 	"github.com/jaytaylor/html2text"
-	"github.com/microcosm-cc/bluemonday"
 	"github.com/mmcdole/gofeed"
 	"github.com/nbd-wtf/go-nostr"
 )
@@ -186,7 +183,230 @@ func UpdateMetadataNote(pubkeyhex string, nostrProfile models.Profile) (*nostr.E
 	return &evt, nil
 }
 
-func feedItemToNote_old(pubkey string, item *gofeed.Item, feed *gofeed.Feed, defaultCreatedAt time.Time, _ string, maxContentLength int) nostr.Event {
+func feedItemToNote(pubkey string, item *gofeed.Item, feedlink string) nostr.Event {
+
+	// fmt.Printf("\n[DEBUG]----- title ----:%s", item.Title)
+	// fmt.Printf("\n[DEBUG] desc: %s", item.Description)
+	// fmt.Printf("\n[DEBUG] content: %s", item.Content)
+	// fmt.Printf("\n[DEBUG] link: %s", item.Link)
+
+	content := ""
+	if item.Title != "" {
+		content = "**" + item.Title + "**"
+	}
+
+	txt, err := html2text.FromString(item.Content)
+	if err == nil {
+		content += "\n\n" + txt
+		//fmt.Printf("\n[DEBUG] content:\n%s itemContent:\n%s ", content, item.Content)
+	} else {
+		log.Printf("[ERROR] %s", err)
+		//return "", err
+	}
+
+	/* 	if maxContentLength > 0 && len(content) > maxContentLength {
+		content = content[0:(maxContentLength-1)] + "…"
+	} */
+
+	shouldUpgradeLinkSchema := false
+
+	if shouldUpgradeLinkSchema {
+		item.Link = strings.ReplaceAll(item.Link, "http://", "https://")
+	}
+
+	content += "\n\n" + item.Link
+
+	createdAt := time.Unix(time.Now().Unix(), 0)
+
+	//log.Printf("[DEBUG] item %s defaultCreatedAt %v", item.Title, defaultCreatedAt.Unix())
+	if item.UpdatedParsed != nil {
+		createdAt = *item.UpdatedParsed
+		//log.Printf("[DEBUG] item %s UpdatedParsed %v", item.Title, item.UpdatedParsed.Unix())
+	}
+	if item.PublishedParsed != nil {
+		createdAt = *item.PublishedParsed
+		//log.Printf("[DEBUG] item %s PublishedParsed %v", item.Title, item.PublishedParsed.Unix())
+	}
+
+	composedProxyLink := feedlink
+	if item.GUID != "" {
+		composedProxyLink += fmt.Sprintf("#%s", url.QueryEscape(item.GUID))
+	}
+
+	evt := nostr.Event{
+		PubKey:    pubkey,
+		CreatedAt: nostr.Timestamp(createdAt.Unix()),
+		Kind:      nostr.KindTextNote,
+		Tags:      nostr.Tags{{"proxy", composedProxyLink, "rss"}, {"t", "rssnotes"}},
+		Content:   content,
+	}
+	evt.ID = string(evt.Serialize())
+
+	return evt
+}
+
+func GetPrivateKeyFromFeedUrl(url string) string {
+	m := hmac.New(sha256.New, []byte(s.RelayPrivkey))
+	m.Write([]byte(url))
+	r := m.Sum(nil)
+
+	/* 	sk := hex.EncodeToString(r)
+	   	pk, _ := nostr.GetPublicKey(sk)
+
+	   	// Encode the private key to nsec format
+	   	nsec, err := nip19.EncodePrivateKey(sk)
+	   	if err != nil {
+	   		panic(err)
+	   	}
+
+	   	// Encode the public key to npub format
+	   	npub, _ := nip19.EncodePublicKey(pk)
+
+	   	fmt.Println("New Private Key (Hex):", sk)
+	   	fmt.Println("New Public Key (Hex):", pk)
+	   	fmt.Println("Private Key (nsec):", nsec)
+	   	fmt.Println("Public Key (npub):", npub) */
+
+	return hex.EncodeToString(r)
+}
+
+func InitFeed(pubkey string, privkey string, feedURL string, parsedFeed *gofeed.Feed) (int64, []int64) {
+	var lastPostTime int64
+	postTimes := make([]int64, 0)
+
+	for _, item := range parsedFeed.Items {
+		evt := feedItemToNote(pubkey, item, parsedFeed.FeedLink)
+		if err := evt.Sign(privkey); err != nil {
+			log.Printf("[ERROR] %s", err)
+			continue
+		}
+		log.Printf("[DEBUG] feed entity %s note created with ID %s", feedURL, evt.ID)
+
+		rly.BroadcastEvent(&evt)
+
+		for _, store := range rly.StoreEvent {
+			store(context.TODO(), &evt)
+		}
+
+		metrics.KindTextNoteCreated.Inc()
+
+		if evt.CreatedAt.Time().Unix() > lastPostTime {
+			lastPostTime = evt.CreatedAt.Time().Unix()
+		}
+
+		postTimes = append(postTimes, evt.CreatedAt.Time().Unix())
+	}
+
+	return lastPostTime, postTimes
+}
+
+// returns the average seconds between posts for given feed
+func CalcAvgPostTime(feedPostTimes []int64) int64 {
+	if len(feedPostTimes) < s.MinPostPeriodSamples {
+		return int64(s.MaxAvgPostPeriodHrs * 60 * 60)
+	}
+
+	sort.SliceStable(feedPostTimes, func(i, j int) bool {
+		return feedPostTimes[i] > feedPostTimes[j]
+	})
+
+	avgposttimesecs := (feedPostTimes[0] - feedPostTimes[len(feedPostTimes)-1]) / int64(len(feedPostTimes))
+
+	if avgposttimesecs < int64(s.MinAvgPostPeriodMins*60) {
+		return int64(s.MinAvgPostPeriodMins * 60)
+	} else if avgposttimesecs > int64(s.MaxAvgPostPeriodHrs*60*60) {
+		return int64(s.MaxAvgPostPeriodHrs * 60 * 60)
+	}
+
+	return avgposttimesecs
+}
+
+func CheckAllFeeds() {
+	newBookmarkCreated := false
+	currentEntities, err := GetEntities()
+	if err != nil {
+		log.Printf("[ERROR] get entities: %s", err)
+		return
+	}
+
+	for _, currentEntity := range currentEntities {
+		if !helpers.TimetoUpdateFeed(currentEntity) {
+			//log.Printf("[DEBUG] not time to update %s. Time since last check: %d Avg post time: %d", currentEntity.URL, time.Now().Unix()-currentEntity.LastCheckedTime, currentEntity.AvgPostTime)
+			continue
+		}
+
+		lastPostTime := int64(0)
+		allPostTimes := make([]int64, 0)
+
+		//parsedFeed, err := parseFeedForPubkey(currentEntity.PubKey, s.DeleteFailingFeeds)
+		parsedFeed, err := ParseFeedForUrl(currentEntity.FeedURL)
+		if parsedFeed == nil || err != nil {
+			if err != nil {
+				log.Printf("[ERROR] %s", err)
+			}
+			continue
+		}
+
+		if currentEntity.Blastr {
+			if metadataEvt, _ := GetLocalMetadataEvent(currentEntity.PubKey); metadataEvt.ID != "" {
+				refreshMetadataEvt := time.Now().Unix()-metadataEvt.CreatedAt.Time().Unix() > int64(s.FeedMetadataRefreshDays*86400)
+				if refreshMetadataEvt {
+					var prof models.Profile
+					if err := json.Unmarshal([]byte(metadataEvt.Content), &prof); err == nil {
+						UpdateMetadataNote(currentEntity.PubKey, prof)
+						BlastNostrEventCh <- metadataEvt
+					} else {
+						log.Printf("[ERROR] blasting metadata: %s ", err)
+					}
+				}
+			}
+		}
+
+		for _, item := range parsedFeed.Items {
+			evt := feedItemToNote(currentEntity.PubKey, item, parsedFeed.FeedLink)
+			if currentEntity.LastPostTime < evt.CreatedAt.Time().Unix() {
+				if err := evt.Sign(currentEntity.PrivateKey); err != nil {
+					log.Printf("[ERROR] %s", err)
+					continue
+				}
+				log.Printf("[DEBUG] feed entity %s note created with ID %s", currentEntity.FeedURL, evt.ID)
+
+				rly.BroadcastEvent(&evt)
+
+				for _, store := range rly.StoreEvent {
+					store(context.TODO(), &evt)
+				}
+
+				metrics.KindTextNoteCreated.Inc()
+
+				// publish note to other relays
+				if currentEntity.Blastr {
+					BlastNostrEventCh <- evt
+				}
+			}
+
+			if evt.CreatedAt.Time().Unix() > lastPostTime {
+				lastPostTime = evt.CreatedAt.Time().Unix()
+			}
+
+			allPostTimes = append(allPostTimes, evt.CreatedAt.Time().Unix())
+		}
+
+		if err := UpdateEntity(currentEntity.PubKey,
+			models.WithLastPostTime(lastPostTime),
+			models.WithLastCheckedTime(time.Now().Unix()),
+			models.WithAvgPostTime(CalcAvgPostTime(allPostTimes))); err != nil {
+			log.Printf("[ERROR] feed entity %s times not updated", currentEntity.FeedURL)
+		} else {
+			newBookmarkCreated = true
+		}
+	}
+	if newBookmarkCreated {
+		deleteOldKBookmarkEvents()
+	}
+}
+
+/* func feedItemToNote_old(pubkey string, item *gofeed.Item, feed *gofeed.Feed, defaultCreatedAt time.Time, _ string, maxContentLength int) nostr.Event {
 	content := ""
 	if item.Title != "" {
 		content = "**" + item.Title + "**"
@@ -260,247 +480,4 @@ func feedItemToNote_old(pubkey string, item *gofeed.Item, feed *gofeed.Feed, def
 	evt.ID = string(evt.Serialize())
 
 	return evt
-}
-
-func feedItemToNote(pubkey string, item *gofeed.Item, feed *gofeed.Feed, defaultCreatedAt time.Time, _ string, maxContentLength int) nostr.Event {
-
-	// fmt.Printf("\n[DEBUG]----- title ----:%s", item.Title)
-	// fmt.Printf("\n[DEBUG] desc: %s", item.Description)
-	// fmt.Printf("\n[DEBUG] content: %s", item.Content)
-	// fmt.Printf("\n[DEBUG] link: %s", item.Link)
-
-	content := ""
-	if item.Title != "" {
-		content = "**" + item.Title + "**"
-	}
-
-	txt, err := html2text.FromString(item.Content)
-	if err == nil {
-		content += "\n\n" + txt
-		//fmt.Printf("\n[DEBUG] content:\n%s itemContent:\n%s ", content, item.Content)
-	} else {
-		log.Printf("[ERROR] %s", err)
-		//return "", err
-	}
-
-	/* 	if maxContentLength > 0 && len(content) > maxContentLength {
-		content = content[0:(maxContentLength-1)] + "…"
-	} */
-
-	shouldUpgradeLinkSchema := false
-
-	if shouldUpgradeLinkSchema {
-		item.Link = strings.ReplaceAll(item.Link, "http://", "https://")
-	}
-
-	content += "\n\n" + item.Link
-
-	createdAt := defaultCreatedAt
-	//log.Printf("[DEBUG] item %s defaultCreatedAt %v", item.Title, defaultCreatedAt.Unix())
-	if item.UpdatedParsed != nil {
-		createdAt = *item.UpdatedParsed
-		//log.Printf("[DEBUG] item %s UpdatedParsed %v", item.Title, item.UpdatedParsed.Unix())
-	}
-	if item.PublishedParsed != nil {
-		createdAt = *item.PublishedParsed
-		//log.Printf("[DEBUG] item %s PublishedParsed %v", item.Title, item.PublishedParsed.Unix())
-	}
-
-	composedProxyLink := feed.FeedLink
-	if item.GUID != "" {
-		composedProxyLink += fmt.Sprintf("#%s", url.QueryEscape(item.GUID))
-	}
-
-	evt := nostr.Event{
-		PubKey:    pubkey,
-		CreatedAt: nostr.Timestamp(createdAt.Unix()),
-		Kind:      nostr.KindTextNote,
-		Tags:      nostr.Tags{[]string{"proxy", composedProxyLink, "rss"}, {"t", "rssnotes"}},
-		Content:   content,
-	}
-	evt.ID = string(evt.Serialize())
-
-	/*
-		if convertedHtml, _ := nostrrelay.Html2Text(siteToScrape.ScrapedArticle); convertedHtml != "" {
-					evt := &nostr.Event{
-						CreatedAt: nostr.Now(),
-						Kind:      nostr.KindTextNote,
-						Content:   convertedHtml,
-						Tags: nostr.Tags{
-							{"alt", siteToScrape.VisitURL},
-							{"t", "crossfit"},
-							{"t", "CrossFit WOD 💪😎."},
-							{"t", "exercise"}},
-					}
-
-					if err := nostrrelay.Test_blast(context.Background(), rssfeedsCfg.Haven.LLMAcct.Privkey, evt, []string{"relay.dzarchivo.org/relay/private"}); err != nil {
-						log.Printf("[ERROR] %s", err)
-					}
-				}
-	*/
-
-	return evt
-}
-
-func GetPrivateKeyFromFeedUrl(url string) string {
-	m := hmac.New(sha256.New, []byte(s.RelayPrivkey))
-	m.Write([]byte(url))
-	r := m.Sum(nil)
-
-	/* 	sk := hex.EncodeToString(r)
-	   	pk, _ := nostr.GetPublicKey(sk)
-
-	   	// Encode the private key to nsec format
-	   	nsec, err := nip19.EncodePrivateKey(sk)
-	   	if err != nil {
-	   		panic(err)
-	   	}
-
-	   	// Encode the public key to npub format
-	   	npub, _ := nip19.EncodePublicKey(pk)
-
-	   	fmt.Println("New Private Key (Hex):", sk)
-	   	fmt.Println("New Public Key (Hex):", pk)
-	   	fmt.Println("Private Key (nsec):", nsec)
-	   	fmt.Println("Public Key (npub):", npub) */
-
-	return hex.EncodeToString(r)
-}
-
-func CheckAllFeeds() {
-	newBookmarkCreated := false
-	currentEntities, err := GetEntities()
-	if err != nil {
-		log.Printf("[ERROR] get entities: %s", err)
-		return
-	}
-
-	for _, currentEntity := range currentEntities {
-		if !helpers.TimetoUpdateFeed(currentEntity) {
-			//log.Printf("[DEBUG] not time to update %s. Time since last check: %d Avg post time: %d", currentEntity.URL, time.Now().Unix()-currentEntity.LastCheckedTime, currentEntity.AvgPostTime)
-			continue
-		}
-
-		lastPostTime := int64(0)
-		allPostTimes := make([]int64, 0)
-
-		//parsedFeed, err := parseFeedForPubkey(currentEntity.PubKey, s.DeleteFailingFeeds)
-		parsedFeed, err := ParseFeedForUrl(currentEntity.FeedURL)
-		if parsedFeed == nil || err != nil {
-			if err != nil {
-				log.Printf("[ERROR] %s", err)
-			}
-			continue
-		}
-
-		if currentEntity.Blastr {
-			if metadataEvt, _ := GetLocalMetadataEvent(currentEntity.PubKey); metadataEvt.ID != "" {
-				refreshMetadataEvt := time.Now().Unix()-metadataEvt.CreatedAt.Time().Unix() > int64(s.FeedMetadataRefreshDays*86400)
-				if refreshMetadataEvt {
-					var prof models.Profile
-					if err := json.Unmarshal([]byte(metadataEvt.Content), &prof); err == nil {
-						UpdateMetadataNote(currentEntity.PubKey, prof)
-						BlastNostrEventCh <- metadataEvt
-					} else {
-						log.Printf("[ERROR] blasting metadata: %s ", err)
-					}
-				}
-			}
-		}
-
-		for _, item := range parsedFeed.Items {
-			defaultCreatedAt := time.Unix(time.Now().Unix(), 0)
-			evt := feedItemToNote(currentEntity.PubKey, item, parsedFeed, defaultCreatedAt, currentEntity.FeedURL, s.MaxContentLength)
-			if currentEntity.LastPostTime < evt.CreatedAt.Time().Unix() {
-				if err := evt.Sign(currentEntity.PrivateKey); err != nil {
-					log.Printf("[ERROR] %s", err)
-					continue
-				}
-				log.Printf("[DEBUG] feed entity %s note created with ID %s", currentEntity.FeedURL, evt.ID)
-
-				rly.BroadcastEvent(&evt)
-
-				for _, store := range rly.StoreEvent {
-					store(context.TODO(), &evt)
-				}
-
-				metrics.KindTextNoteCreated.Inc()
-
-				// publish note to other relays
-				if currentEntity.Blastr {
-					BlastNostrEventCh <- evt
-				}
-			}
-
-			if evt.CreatedAt.Time().Unix() > lastPostTime {
-				lastPostTime = evt.CreatedAt.Time().Unix()
-			}
-
-			allPostTimes = append(allPostTimes, evt.CreatedAt.Time().Unix())
-		}
-
-		if err := UpdateEntity(currentEntity.PubKey,
-			models.WithLastPostTime(lastPostTime),
-			models.WithLastCheckedTime(time.Now().Unix()),
-			models.WithAvgPostTime(CalcAvgPostTime(allPostTimes))); err != nil {
-			log.Printf("[ERROR] feed entity %s times not updated", currentEntity.FeedURL)
-		} else {
-			newBookmarkCreated = true
-		}
-	}
-	if newBookmarkCreated {
-		deleteOldKBookmarkEvents()
-	}
-}
-
-func InitFeed(pubkey string, privkey string, feedURL string, parsedFeed *gofeed.Feed) (int64, []int64) {
-	var lastPostTime int64
-	postTimes := make([]int64, 0)
-
-	for _, item := range parsedFeed.Items {
-		defaultCreatedAt := time.Unix(time.Now().Unix(), 0)
-		evt := feedItemToNote(pubkey, item, parsedFeed, defaultCreatedAt, feedURL, s.MaxContentLength)
-		if err := evt.Sign(privkey); err != nil {
-			log.Printf("[ERROR] %s", err)
-			continue
-		}
-		log.Printf("[DEBUG] feed entity %s note created with ID %s", feedURL, evt.ID)
-
-		rly.BroadcastEvent(&evt)
-
-		for _, store := range rly.StoreEvent {
-			store(context.TODO(), &evt)
-		}
-
-		metrics.KindTextNoteCreated.Inc()
-
-		if evt.CreatedAt.Time().Unix() > lastPostTime {
-			lastPostTime = evt.CreatedAt.Time().Unix()
-		}
-
-		postTimes = append(postTimes, evt.CreatedAt.Time().Unix())
-	}
-
-	return lastPostTime, postTimes
-}
-
-// returns the average seconds between posts for given feed
-func CalcAvgPostTime(feedPostTimes []int64) int64 {
-	if len(feedPostTimes) < s.MinPostPeriodSamples {
-		return int64(s.MaxAvgPostPeriodHrs * 60 * 60)
-	}
-
-	sort.SliceStable(feedPostTimes, func(i, j int) bool {
-		return feedPostTimes[i] > feedPostTimes[j]
-	})
-
-	avgposttimesecs := (feedPostTimes[0] - feedPostTimes[len(feedPostTimes)-1]) / int64(len(feedPostTimes))
-
-	if avgposttimesecs < int64(s.MinAvgPostPeriodMins*60) {
-		return int64(s.MinAvgPostPeriodMins * 60)
-	} else if avgposttimesecs > int64(s.MaxAvgPostPeriodHrs*60*60) {
-		return int64(s.MaxAvgPostPeriodHrs * 60 * 60)
-	}
-
-	return avgposttimesecs
-}
+} */

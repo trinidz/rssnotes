@@ -9,6 +9,7 @@ import (
 	"rssnotes/internal/config"
 	"rssnotes/internal/helpers"
 	"rssnotes/internal/models"
+	"time"
 
 	"github.com/fiatjaf/eventstore/badger"
 	"github.com/fiatjaf/khatru"
@@ -65,14 +66,21 @@ func InitRelay(cfg config.C) *khatru.Relay {
 		policyFilterBookmark,
 	)
 
-	if _, err := CreateMetadataNote(cfg.RelayPubkey, cfg.RelayPrivkey,
-		models.Profile{
-			Name:        cfg.RelayName,
-			DisplayName: cfg.RelayName,
-			About:       cfg.RelayDescription,
-			Website:     cfg.RelayURL,
-			Picture:     cfg.RelayIcon}); err != nil {
-		log.Print("[ERROR] ", err)
+	refreshMetadataEvt := true
+	if metadataEvt, _ := GetLocalMetadataEvent(cfg.RelayPubkey); metadataEvt.ID != "" {
+		refreshMetadataEvt = time.Now().Unix()-metadataEvt.CreatedAt.Time().Unix() > int64(s.FeedMetadataRefreshDays*86400)
+	}
+
+	if refreshMetadataEvt {
+		if _, err := CreateMetadataNote(cfg.RelayPubkey, cfg.RelayPrivkey,
+			models.Profile{
+				Name:        cfg.RelayName,
+				DisplayName: cfg.RelayName,
+				About:       cfg.RelayDescription,
+				Website:     cfg.RelayURL,
+				Picture:     cfg.RelayIcon}); err != nil {
+			log.Print("[ERROR] ", err)
+		}
 	}
 
 	npub, err := nip19.EncodePublicKey(cfg.RelayPubkey)
