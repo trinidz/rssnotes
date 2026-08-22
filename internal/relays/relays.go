@@ -81,6 +81,10 @@ func InitRelay(cfg config.C) *khatru.Relay {
 				Picture:     cfg.RelayIcon}); err != nil {
 			log.Print("[ERROR] ", err)
 		}
+
+		if _, err := CreateRelayListEvent(cfg.RelayPubkey, cfg.RelayPrivkey); err != nil {
+			log.Print("[ERROR] ", err)
+		}
 	}
 
 	npub, err := nip19.EncodePublicKey(cfg.RelayPubkey)

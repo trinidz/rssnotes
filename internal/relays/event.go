@@ -94,35 +94,37 @@ func GetLocalMetadataEvent(pubkey string) (nostr.Event, error) {
 	return *metaData[0], nil
 }
 
-// TRUE if feed exists in bookmark event
-func FeedExists(pubkeyHex, privKeyHex, feedUrl string) (bool, error) {
+// create nip-65 kind 10002 relay list metadata evevt
+func CreateRelayListEvent(pubkeyhex, privkeyhex string) (nostr.Event, error) {
 
-	if feedUrl == "" {
-		log.Printf("[ERROR] feedURL is empty")
-		return false, fmt.Errorf("feedURL is empty")
+	relaylist := make(nostr.Tags, 0)
+
+	for _, rly := range seedRelays {
+		relaylist = append(relaylist, nostr.Tag{"r", rly, "write"})
 	}
 
-	bookmarkEvent, err := getBookMarkEvent()
-	if err != nil {
-		log.Printf("[ERROR] %s", err)
-		return false, err
+	evt := nostr.Event{
+		PubKey:    pubkeyhex,
+		CreatedAt: nostr.Now(),
+		Kind:      nostr.KindRelayListMetadata,
+		Tags:      relaylist,
+		Content:   "",
+	}
+	evt.ID = string(evt.Serialize())
+
+	if err := evt.Sign(privkeyhex); err != nil {
+		log.Print("[ERROR]", err)
+		return nostr.Event{}, err
 	}
 
-	if bookmarkEvent == nil {
-		log.Printf("[DEBUG] no bookmark found")
-		return false, nil
+	rly.BroadcastEvent(&evt)
+
+	for _, store := range rly.StoreEvent {
+		store(context.TODO(), &evt)
 	}
 
-	bookMarkTags := bookmarkEvent.Tags.GetAll([]string{s.RsslayTagKey})
-	for _, tag := range bookMarkTags {
-		if strings.Contains(tag.Value(), pubkeyHex) || strings.Contains(tag.Value(), privKeyHex) || strings.Contains(tag.Value(), feedUrl) {
-			log.Printf("[DEBUG] feedUrl %s already exists", feedUrl)
-			return true, nil
-		}
-	}
-
-	log.Printf("[DEBUG] feed %s does not exist", feedUrl)
-	return false, nil
+	log.Printf("[DEBUG] relay metadata note for pubkey %s created with ID %s and createdat %d", pubkeyhex, evt.ID, evt.CreatedAt.Time().Unix())
+	return evt, nil
 }
 
 func deleteLocalEvents(filter nostr.Filter) error {

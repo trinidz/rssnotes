@@ -140,7 +140,7 @@ func CreateMetadataNote(pubkey string, privkey string, metaData models.Profile) 
 	return &evt, nil
 }
 
-func UpdateMetadataNote(pubkeyhex string, nostrProfile models.Profile) (*nostr.Event, error) {
+func UpdateMetadataNote(pubkeyhex string, nostrProfile models.Profile) (nostr.Event, error) {
 
 	// verify profile data here
 	// TODO
@@ -148,12 +148,12 @@ func UpdateMetadataNote(pubkeyhex string, nostrProfile models.Profile) (*nostr.E
 	content, err := json.Marshal(nostrProfile)
 	if err != nil {
 		log.Print("[ERROR] marshaling metadata content", err)
-		return nil, err
+		return nostr.Event{}, err
 	}
 
 	entity, err := GetEntity(pubkeyhex)
 	if err != nil {
-		return nil, err
+		return nostr.Event{}, err
 	}
 
 	createdAt := nostr.Timestamp(time.Now().Unix())
@@ -169,7 +169,7 @@ func UpdateMetadataNote(pubkeyhex string, nostrProfile models.Profile) (*nostr.E
 
 	if err := evt.Sign(entity.PrivateKey); err != nil {
 		log.Print("[ERROR]", err)
-		return nil, err
+		return nostr.Event{}, err
 	}
 
 	rly.BroadcastEvent(&evt)
@@ -180,7 +180,7 @@ func UpdateMetadataNote(pubkeyhex string, nostrProfile models.Profile) (*nostr.E
 
 	metrics.KindProfileMetadataCreated.Inc()
 	log.Printf("[DEBUG] metadata note updated for %s created with ID %s with createdat %d", entity.FeedTitle, evt.ID, evt.CreatedAt.Time().Unix())
-	return &evt, nil
+	return evt, nil
 }
 
 func feedItemToNote(pubkey string, item *gofeed.Item, feedlink string) nostr.Event {
@@ -321,6 +321,37 @@ func CalcAvgPostTime(feedPostTimes []int64) int64 {
 	return avgposttimesecs
 }
 
+// TRUE if feed exists in bookmark event
+func FeedExists(pubkeyHex, privKeyHex, feedUrl string) (bool, error) {
+
+	if feedUrl == "" {
+		log.Printf("[ERROR] feedURL is empty")
+		return false, fmt.Errorf("feedURL is empty")
+	}
+
+	bookmarkEvent, err := getBookMarkEvent()
+	if err != nil {
+		log.Printf("[ERROR] %s", err)
+		return false, err
+	}
+
+	if bookmarkEvent == nil {
+		log.Printf("[DEBUG] no bookmark found")
+		return false, nil
+	}
+
+	bookMarkTags := bookmarkEvent.Tags.GetAll([]string{s.RsslayTagKey})
+	for _, tag := range bookMarkTags {
+		if strings.Contains(tag.Value(), pubkeyHex) || strings.Contains(tag.Value(), privKeyHex) || strings.Contains(tag.Value(), feedUrl) {
+			log.Printf("[DEBUG] feedUrl %s already exists", feedUrl)
+			return true, nil
+		}
+	}
+
+	log.Printf("[DEBUG] feed %s does not exist", feedUrl)
+	return false, nil
+}
+
 func CheckAllFeeds() {
 	newBookmarkCreated := false
 	currentEntities, err := GetEntities()
@@ -348,15 +379,22 @@ func CheckAllFeeds() {
 		}
 
 		if currentEntity.Blastr {
-			if metadataEvt, _ := GetLocalMetadataEvent(currentEntity.PubKey); metadataEvt.ID != "" {
-				refreshMetadataEvt := time.Now().Unix()-metadataEvt.CreatedAt.Time().Unix() > int64(s.FeedMetadataRefreshDays*86400)
+			if currentMetadataEvt, _ := GetLocalMetadataEvent(currentEntity.PubKey); currentMetadataEvt.ID != "" {
+				refreshMetadataEvt := time.Now().Unix()-currentMetadataEvt.CreatedAt.Time().Unix() > int64(s.FeedMetadataRefreshDays*86400)
 				if refreshMetadataEvt {
 					var prof models.Profile
-					if err := json.Unmarshal([]byte(metadataEvt.Content), &prof); err == nil {
-						UpdateMetadataNote(currentEntity.PubKey, prof)
-						BlastNostrEventCh <- metadataEvt
-					} else {
+					if err := json.Unmarshal([]byte(currentMetadataEvt.Content), &prof); err != nil {
 						log.Printf("[ERROR] blasting metadata: %s ", err)
+					} else {
+						if updatedMetaEvt, err := UpdateMetadataNote(currentEntity.PubKey, prof); err == nil {
+							BlastNostrEventCh <- updatedMetaEvt
+						}
+					}
+
+					if rlyListEvt, err := CreateRelayListEvent(currentEntity.PubKey, currentEntity.PrivateKey); err != nil {
+						log.Print("[ERROR] blasting relay list ", err)
+					} else {
+						BlastNostrEventCh <- rlyListEvt
 					}
 				}
 			}

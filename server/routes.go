@@ -212,7 +212,7 @@ func (s *Server) handleProfileSaveBtn(c *router.Context) {
 
 	if ent, err := relays.GetEntity(req.Pubkey); err == nil && ent.PubKey != "" {
 		if ent.Blastr {
-			relays.BlastNostrEventCh <- *metaEvt
+			relays.BlastNostrEventCh <- metaEvt
 		}
 	} else {
 		log.Printf("[WARN] entity not found or getEntity err: %s", err)
