@@ -203,6 +203,11 @@ func (s *Server) handleProfileSaveBtn(c *router.Context) {
 		return
 	}
 
+	if req.Pubkey == s.Cfg.RelayPubkey {
+		c.JSON(http.StatusOK, map[string]string{"title": "Info", "message": "No changes saved. rssnotes relay profile is readonly."})
+		return
+	}
+
 	metaEvt, err := relays.UpdateMetadataNote(req.Pubkey, req.Profile)
 	if err != nil {
 		log.Printf("[ERROR] update metadata: %s", err)

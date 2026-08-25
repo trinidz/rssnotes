@@ -147,7 +147,7 @@ func UpdateMetadataNote(pubkeyhex string, nostrProfile models.Profile) (nostr.Ev
 
 	content, err := json.Marshal(nostrProfile)
 	if err != nil {
-		log.Print("[ERROR] marshaling metadata content", err)
+		log.Print("[ERROR] marshaling metadata content: ", err)
 		return nostr.Event{}, err
 	}
 
@@ -162,7 +162,7 @@ func UpdateMetadataNote(pubkeyhex string, nostrProfile models.Profile) (nostr.Ev
 		PubKey:    entity.PubKey,
 		CreatedAt: nostr.Timestamp(createdAt),
 		Kind:      nostr.KindProfileMetadata,
-		Tags:      nostr.Tags{[]string{"proxy", entity.FeedURL, "rss"}},
+		Tags:      nostr.Tags{{"proxy", entity.FeedURL, "rss"}},
 		Content:   string(content),
 	}
 	evt.ID = string(evt.Serialize())
