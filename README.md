@@ -13,7 +13,6 @@ rssnotes is a nostr relay that functions as an rss to nostr bridge by creating n
 - Selection of relay metrics dislayed on main page. (Displayed metrics other than FEEDS are per session and will reset if relay is restarted.)
 - Prometheus metrics available on /metrics path.
 - Search bar
-- Relay logs exposed on the /log path.
 - Using [khatru](https://github.com/fiatjaf/khatru)
 
 ## Screenshot
@@ -31,12 +30,11 @@ mkdir rssnotes
 cd rssnotes
 ```
 
-2. Create four files: `docker-compose.yml`, `.env`, `seedrelays.json` and `logfile.log`.
+2. Create three files: `docker-compose.yml`, `.env` and `seedrelays.json`.
 ```bash
 touch docker-compose.yml
 touch .env
 touch seedrelays.json
-touch logfile.log
 ```
 
 3. Copy and paste the contents from the [sample.docker-compose.yml](https://github.com/trinidz/rssnotes/blob/main/sample.docker-compose.yml) file into your `docker-compose.yml` file. Save and exit the file.

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -26,27 +25,20 @@ func main() {
 		return
 	}
 
-	logFile, err := os.OpenFile(c.LogfilePath, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		log.Panicf("[FATAL] Logfile: %s", err)
-	}
-	defer logFile.Close()
-
 	log.SetFlags(log.Lshortfile | log.LstdFlags)
 
 	filter := &logutils.LevelFilter{
 		Levels:   []logutils.LogLevel{"DEBUG", "INFO", "WARN", "ERROR", "FATAL"},
 		MinLevel: logutils.LogLevel(c.LogLevel),
-		Writer:   logFile,
+		Writer:   os.Stderr,
 	}
 	log.SetOutput(filter)
 
 	srvr := server.NewServer(c)
 
-	fmt.Printf("listening on 0.0.0.0:%s%s\n", srvr.Cfg.Port, srvr.GetAddr().Path)
-	fmt.Printf("public url (RELAY_URL) at %s\n", srvr.GetAddr().Scheme+"://"+srvr.GetAddr().Host+srvr.GetAddr().Path)
+	log.Printf("[WARN] listening on 0.0.0.0:%s%s\n", srvr.Cfg.Port, srvr.GetAddr().Path)
+	log.Printf("[INFO] public url (RELAY_URL) set to %s\n", srvr.GetAddr().Scheme+"://"+srvr.GetAddr().Host+srvr.GetAddr().Path)
 	if err := http.ListenAndServe(":"+srvr.Cfg.Port, srvr.Serve()); err != nil {
-		fmt.Printf("ListenAndServe error %s", err)
 		log.Panicf("[FATAL] ListenAndServe error %s", err)
 	}
 }

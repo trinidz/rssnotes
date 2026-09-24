@@ -55,7 +55,6 @@ func (s *Server) handler() http.Handler {
 		promhttp.Handler().ServeHTTP(c.Out, c.Req)
 	})
 	r.For("/metricsDisplay", s.handleMetricsDisplay)
-	r.For("/log", s.handleLog)
 	r.For("/health", s.handleHealth)
 	r.For("/profile", s.handleProfileBtn)
 	r.For("/profilesave", s.handleProfileSaveBtn)
@@ -936,12 +935,6 @@ func (s *Server) handleHealth(c *router.Context) {
 	}
 
 	respondWithJSON(c, 200, data)
-}
-
-func (s *Server) handleLog(c *router.Context) {
-	c.Out.Header().Add("content-type", "application/opml")
-	c.Out.Header().Add("content-disposition", "attachment; filename="+time.Now().Format(time.DateOnly)+"-rssnotes.log")
-	http.ServeFile(c.Out, c.Req, s.Cfg.LogfilePath)
 }
 
 func (s *Server) getPrometheusMetric(promParam *prometheus.Desc) string {

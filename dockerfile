@@ -9,8 +9,6 @@ COPY go.mod ./
 COPY go.sum ./
 RUN go mod download
 
-RUN touch logfile.log
-
 COPY . .
 
 ARG APP_VERSION
@@ -30,7 +28,6 @@ FROM alpine:latest
 ENV PORT=3334
 
 ENV DATABASE_PATH="/app/db/rssnotes"
-ENV LOGFILE_PATH="/app/logfile.log"
 ENV FRENSDATA_PATH="/app/users.json"
 ENV SEED_RELAYS_PATH="/app/seedrelays.json"
 ENV TEMPLATE_PATH="/app/web/templates"

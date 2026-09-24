@@ -16,7 +16,6 @@ type C struct {
 	DatabasePath   string `envconfig:"DATABASE_PATH" default:"./db/rssnotes"`
 	FrensdataPath  string `envconfig:"FRENSDATA_PATH" default:"./frens.json"`
 	SeedRelaysPath string `envconfig:"SEED_RELAYS_PATH" default:"./seedrelays.json"`
-	LogfilePath    string `envconfig:"LOGFILE_PATH" default:"./logfile.log"`
 	TemplatePath   string `envconfig:"TEMPLATE_PATH" default:"./web/templates"`
 	StaticPath     string `envconfig:"STATIC_PATH" default:"./web/assets"`
 	QRCodePath     string `envconfig:"QRCODE_PATH" default:"./web/assets/qrcodes"`
